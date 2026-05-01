@@ -1,0 +1,20 @@
+.claude
+.pytest_cache
+.venv
+local-test
+*.pyc
+__pycache__/
+
+# Ignorer l'environnement virtuel
+.venv/
+
+# Ignorer les logs
+logs/
+*.log
+
+# Ignorer les fichiers de build
+dist/
+build/
+*.egg-info
+
+TODO.txt

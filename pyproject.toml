@@ -1,0 +1,68 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "safe-pip-compile"
+version = "0.1.0"
+description = "pip-compile wrapper with CVE awareness"
+readme = "README.md"
+requires-python = ">=3.9"
+license = {text = "MIT"}
+keywords = ["pip-compile", "CVE", "security", "pinning", "vulnerability-scanning", "safe-pip-compile"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+authors = [
+    {name = "N VENKATA SAI TEJA", email = "venkatsaiteja1027@gmail.com"},
+]
+
+dependencies = [
+    "click>=8.0",
+    "httpx>=0.24",
+    "pyyaml>=6.0",
+    "packaging>=23.0",
+    "platformdirs>=3.0",
+    "rich>=13.0",
+    "pip-tools>=7.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-mock",
+    "respx>=0.20",
+    "coverage[toml]",
+    "mypy",
+    "ruff",
+]
+
+[project.scripts]
+safe-pip-compile = "safe_pip_compile.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.safe-pip-compile]
+max-iterations = 10
+min-severity = "low"
+allowlist = ""
+strict = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "e2e: end-to-end tests requiring network access",
+]
+
+[tool.ruff]
+target-version = "py39"
+line-length = 100

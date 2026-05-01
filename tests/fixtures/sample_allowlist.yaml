@@ -1,0 +1,7 @@
+allowed_cves:
+  - id: CVE-2024-12345
+    reason: "Not applicable - we don't use QuerySet.values() with user input"
+    expires: 2027-12-31
+
+  - id: GHSA-urllib3-vuln
+    reason: "Accepted risk, tracked in JIRA-456"

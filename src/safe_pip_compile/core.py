@@ -4,7 +4,7 @@ import os
 import tempfile
 from typing import TYPE_CHECKING
 
-from safe_pip_compile.allowlist import filter_allowed, load_allowlist
+from safe_pip_compile.allowlist import filter_allowed
 from safe_pip_compile.cache import VulnCache
 from safe_pip_compile.cached_client import CachedOSVClient
 from safe_pip_compile.constraints import generate_constraints, merge_constraints

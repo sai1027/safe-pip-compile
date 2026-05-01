@@ -3,13 +3,13 @@ from __future__ import annotations
 import os
 import ssl
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Optional
+from typing import Optional, Union
 
 import httpx
 from packaging.version import Version
 
 from safe_pip_compile.exceptions import OSVAPIError, OSVNetworkError
-from safe_pip_compile.models import ResolvedPackage, Severity, Vulnerability
+from safe_pip_compile.models import ResolvedPackage, Vulnerability
 from safe_pip_compile.severity import extract_severity_from_osv
 
 

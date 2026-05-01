@@ -6,7 +6,7 @@ import click
 
 from safe_pip_compile.allowlist import load_allowlist
 from safe_pip_compile.cache import VulnCache, get_cache_db_path
-from safe_pip_compile.config import Config, load_config
+from safe_pip_compile.config import load_config
 from safe_pip_compile.core import run_safe_compile
 from safe_pip_compile.exceptions import (
     AllowlistError,
@@ -16,7 +16,7 @@ from safe_pip_compile.exceptions import (
     SafePipCompileError,
     UnsolvableConstraintsError,
 )
-from safe_pip_compile.models import CompileStatus, Severity
+from safe_pip_compile.models import CompileStatus
 from safe_pip_compile.reporter import Reporter
 
 EXIT_CLEAN = 0

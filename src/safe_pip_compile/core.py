@@ -5,7 +5,7 @@ import tempfile
 from typing import TYPE_CHECKING
 
 from safe_pip_compile.allowlist import filter_allowed
-from safe_pip_compile.cache import VulnCache
+from safe_pip_compile.cache import VulnCache, get_cache_dir
 from safe_pip_compile.cached_client import CachedOSVClient
 from safe_pip_compile.constraints import generate_constraints, merge_constraints
 from safe_pip_compile.exceptions import (
@@ -40,17 +40,18 @@ def run_safe_compile(
     osv_client: OSVClient | None = None,
     cache: VulnCache | None = None,
     cert_path: str | None = None,
+    source_display_paths: list[str] | None = None,
 ) -> CompileResult:
     accumulated_constraints: list[str] = []
     all_iterations: list[IterationResult] = []
     all_vulns: list[Vulnerability] = []
     seen_pkg_versions: set[tuple[str, str]] = set()
 
-    output_dir = os.path.dirname(os.path.abspath(output_file)) or "."
+    cache_dir = get_cache_dir()
     constraints_fd, constraints_path = tempfile.mkstemp(
         prefix=".safe-pip-compile-constraints-",
         suffix=".txt",
-        dir=output_dir,
+        dir=cache_dir,
     )
     os.close(constraints_fd)
 
@@ -72,6 +73,9 @@ def run_safe_compile(
                 with open(constraints_path, "w", encoding="utf-8") as f:
                     f.write("\n".join(accumulated_constraints) + "\n")
                 constraints_file_arg = constraints_path
+
+            if constraints_file_arg or _has_temporary_source(src_files):
+                reporter.report_resolver_inputs(src_files, constraints_file_arg)
 
             pip_result = run_pip_compile(
                 src_files=src_files,
@@ -95,6 +99,14 @@ def run_safe_compile(
                         constraints=accumulated_constraints,
                         pip_stderr=pip_result.stderr,
                     )
+
+            if not dry_run:
+                _sanitize_compile_output(
+                    output_file=output_file,
+                    constraints_path=constraints_path,
+                    src_files=src_files,
+                    source_display_paths=source_display_paths,
+                )
 
             if dry_run and iteration == 1:
                 output_for_parsing = _get_dry_run_output(pip_result, src_files)
@@ -256,3 +268,72 @@ def _get_dry_run_output(pip_result, src_files: list[str]) -> str:
         base = os.path.splitext(src_files[0])[0]
         return base + ".txt"
     return "requirements.txt"
+
+
+def _sanitize_compile_output(
+    output_file: str,
+    constraints_path: str,
+    src_files: list[str],
+    source_display_paths: list[str] | None,
+) -> None:
+    if not os.path.exists(output_file):
+        return
+
+    source_display_paths = source_display_paths or src_files
+    source_replacements = {
+        src: _display_path_for_source(src, display)
+        for src, display in zip(src_files, source_display_paths)
+    }
+    constraint_variants = set(_path_variants(constraints_path))
+
+    with open(output_file, encoding="utf-8") as f:
+        lines = f.readlines()
+
+    sanitized: list[str] = []
+    changed = False
+    for line in lines:
+        if "#   -c " in line and any(path in line for path in constraint_variants):
+            changed = True
+            continue
+
+        new_line = line
+        for src_path, display_path in source_replacements.items():
+            for variant in _path_variants(src_path):
+                if variant in new_line:
+                    new_line = new_line.replace(variant, display_path)
+
+        if new_line != line:
+            changed = True
+        sanitized.append(new_line)
+
+    if changed:
+        with open(output_file, "w", encoding="utf-8") as f:
+            f.writelines(sanitized)
+
+
+def _display_path_for_source(src_path: str, display_path: str) -> str:
+    if _is_temporary_source(src_path):
+        return os.path.basename(display_path)
+    return display_path
+
+
+def _has_temporary_source(src_files: list[str]) -> bool:
+    return any(_is_temporary_source(path) for path in src_files)
+
+
+def _is_temporary_source(path: str) -> bool:
+    return os.path.basename(path).startswith("req-unpinned-")
+
+
+def _path_variants(path: str) -> tuple[str, ...]:
+    normalized = os.path.normpath(path)
+    absolute = os.path.abspath(path)
+    variants = {
+        path,
+        normalized,
+        absolute,
+        path.replace("\\", "/"),
+        normalized.replace("\\", "/"),
+        absolute.replace("\\", "/"),
+    }
+    return tuple(variants)

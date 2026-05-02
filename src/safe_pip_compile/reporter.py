@@ -24,6 +24,17 @@ class Reporter:
             f"\n[bold blue][Iteration {n}/{max_n}][/] Running pip-compile..."
         )
 
+    def report_resolver_inputs(
+        self, src_files: list[str], constraints_file: str | None = None
+    ) -> None:
+        self.console.print(
+            "  Using these constraints and requirement files to resolve dependencies:"
+        )
+        if constraints_file:
+            self.console.print(f"    -c {constraints_file}")
+        for src_file in src_files:
+            self.console.print(f"    -r {src_file}")
+
     def report_packages(self, packages: list[ResolvedPackage]) -> None:
         if self.verbosity >= 1:
             for pkg in packages:

@@ -140,7 +140,7 @@ def run_safe_compile(
                 vuln_map = raw_client.batch_query(packages)
 
                 if not vuln_map:
-                    reporter.report_clean(iteration)
+                    reporter.report_clean(iteration, output_file)
                     all_iterations.append(iter_result)
                     return CompileResult(
                         status=CompileStatus.CLEAN,
@@ -177,7 +177,7 @@ def run_safe_compile(
                                 ]
 
             if not vulnerabilities:
-                reporter.report_clean(iteration)
+                reporter.report_clean(iteration, output_file)
                 all_iterations.append(iter_result)
                 return CompileResult(
                     status=CompileStatus.CLEAN,
@@ -200,7 +200,9 @@ def run_safe_compile(
 
             if not blocking_vulns:
                 filtered_count = len(vulnerabilities) - len(blocking_vulns)
-                reporter.report_clean_after_filtering(iteration, filtered_count)
+                reporter.report_clean_after_filtering(
+                    iteration, filtered_count, output_file
+                )
                 all_iterations.append(iter_result)
                 return CompileResult(
                     status=CompileStatus.CLEAN,

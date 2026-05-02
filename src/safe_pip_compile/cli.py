@@ -90,9 +90,7 @@ def main(ctx, src_files, output_file, min_severity, allow_list,
         src_files = ("requirements.in",)
 
     if not output_file:
-        import os
-        base = os.path.splitext(src_files[0])[0]
-        output_file = base + ".txt"
+        output_file = "requirements.txt"
 
     allowlist = []
     if config.allowlist_path:
@@ -155,9 +153,10 @@ def main(ctx, src_files, output_file, min_severity, allow_list,
             except UnsolvableConstraintsError as e:
                 import re
                 reporter.console.print(f"\n[red]Resolution impossible:[/] {e}")
-                
+
                 conflict_match = re.search(
-                    r"(?:Cannot install |No matching distribution found for )([\w.-]+)==([^\s]+)", 
+                    r"(?:Cannot install |No matching distribution found for )"
+                    r"([\w.-]+)==([^\s]+)",
                     e.pip_stderr or ""
                 )
                 if conflict_match:
@@ -168,20 +167,35 @@ def main(ctx, src_files, output_file, min_severity, allow_list,
                         f"{pkg_name}=={pkg_version} has vulnerabilities and conflicts "
                         f"with the required security constraints."
                     )
-                    
-                    if click.confirm(f"Do you want to automatically unpin '{pkg_name}' in your input files and retry?"):
-                        new_src, changes = _unpin_package_to_temp(src_files, pkg_name, get_cache_dir())
+
+                    if click.confirm(
+                        f"Do you want to automatically unpin '{pkg_name}' "
+                        "in your input files and retry?"
+                    ):
+                        new_src, changes = _unpin_package_to_temp(
+                            src_files, pkg_name, get_cache_dir()
+                        )
                         for orig, unpinned in changes:
-                            reporter.console.print(f"  [dim]Changed:[/] {orig} -> {unpinned}")
-                        
+                            reporter.console.print(
+                                f"  [dim]Changed:[/] {orig} -> {unpinned}"
+                            )
+
                         for f in new_src:
                             if f not in src_files and f not in temp_files_to_cleanup:
                                 temp_files_to_cleanup.append(f)
                         src_files = new_src
-                        
-                        reporter.console.print(f"\n[green]Successfully unpinned {pkg_name} to temporary files. Retrying...[/]\n")
+
+                        reporter.console.print(
+                            f"\n[green]Successfully unpinned {pkg_name} "
+                            "to temporary files. Retrying...[/]\n"
+                        )
                         continue
-                
+                    reporter.console.print(
+                        f"\n[yellow]Warning:[/] dependencies are resolved in {output_file}, "
+                        "but unresolved CVEs remain. Please audit before using it."
+                    )
+                    sys.exit(EXIT_COMPILE_FAILED)
+
                 reporter.console.print(
                     "\n[yellow]Consider adding some CVEs to an allowlist with --allow-list[/]"
                 )
@@ -221,21 +235,28 @@ def main(ctx, src_files, output_file, min_severity, allow_list,
                 pass
 
 
-def _unpin_package_to_temp(src_files: tuple[str, ...], pkg_name: str, cache_dir: str) -> tuple[tuple[str, ...], list[tuple[str, str]]]:
+def _unpin_package_to_temp(
+    src_files: tuple[str, ...],
+    pkg_name: str,
+    cache_dir: str,
+) -> tuple[tuple[str, ...], list[tuple[str, str]]]:
     import re
     import tempfile
     import os
     # Match the package name followed by any version constraint (==, >=, <=, ~=, !=, <, >)
-    pattern = re.compile(rf"^({re.escape(pkg_name)})(?:==|>=|<=|~=|!=|<|>)[^\s#]+", re.IGNORECASE)
-    
+    pattern = re.compile(
+        rf"^({re.escape(pkg_name)})(?:==|>=|<=|~=|!=|<|>)[^\s#]+",
+        re.IGNORECASE,
+    )
+
     new_src_files = []
     changes = []
-    
+
     for file_path in src_files:
         try:
             with open(file_path, "r", encoding="utf-8") as f:
                 lines = f.readlines()
-            
+
             changed = False
             new_lines = []
             for line in lines:
@@ -246,9 +267,11 @@ def _unpin_package_to_temp(src_files: tuple[str, ...], pkg_name: str, cache_dir:
                     changed = True
                 else:
                     new_lines.append(line)
-                    
+
             if changed:
-                fd, temp_path = tempfile.mkstemp(prefix="req-unpinned-", suffix=".in", dir=cache_dir)
+                fd, temp_path = tempfile.mkstemp(
+                    prefix="req-unpinned-", suffix=".in", dir=cache_dir
+                )
                 os.close(fd)
                 with open(temp_path, "w", encoding="utf-8") as f:
                     f.writelines(new_lines)
@@ -257,7 +280,7 @@ def _unpin_package_to_temp(src_files: tuple[str, ...], pkg_name: str, cache_dir:
                 new_src_files.append(file_path)
         except Exception:
             new_src_files.append(file_path)
-            
+
     return tuple(new_src_files), changes
 
 if __name__ == "__main__":

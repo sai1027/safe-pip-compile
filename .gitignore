@@ -4,7 +4,7 @@
 local-test
 *.pyc
 __pycache__/
-
+.ruff_cache
 # Ignorer l'environnement virtuel
 .venv/
 
@@ -18,3 +18,4 @@ build/
 *.egg-info
 
 TODO.txt
+task.txt

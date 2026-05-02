@@ -78,19 +78,26 @@ class Reporter:
             f"\n  [bold]Adding constraints:[/] {', '.join(constraints)}"
         )
 
-    def report_clean(self, iteration: int) -> None:
+    def report_clean(
+        self, iteration: int, output_file: str = "requirements.txt"
+    ) -> None:
         self.console.print(
             f"\n  [bold green]No vulnerabilities found.[/] "
-            f"requirements.txt is clean "
+            f"{output_file} is clean "
             f"({'on first pass' if iteration == 1 else f'after {iteration} iterations'})."
         )
 
-    def report_clean_after_filtering(self, iteration: int, filtered_count: int) -> None:
+    def report_clean_after_filtering(
+        self,
+        iteration: int,
+        filtered_count: int,
+        output_file: str = "requirements.txt",
+    ) -> None:
         self.console.print(
             f"\n  [bold green]All clear.[/] "
             f"{filtered_count} vulnerabilit{'y' if filtered_count == 1 else 'ies'} "
             f"filtered by severity/allowlist. "
-            f"requirements.txt is clean after {iteration} iteration{'s' if iteration > 1 else ''}."
+            f"{output_file} is clean after {iteration} iteration{'s' if iteration > 1 else ''}."
         )
 
     def report_unfixable(self, vulns: list[Vulnerability]) -> None:

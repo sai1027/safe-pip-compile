@@ -24,6 +24,17 @@ class Reporter:
             f"\n[bold blue][Iteration {n}/{max_n}][/] Running pip-compile..."
         )
 
+    def report_resolver_inputs(
+        self, src_files: list[str], constraints_file: str | None = None
+    ) -> None:
+        self.console.print(
+            "  Using these constraints and requirement files to resolve dependencies:"
+        )
+        if constraints_file:
+            self.console.print(f"    -c {constraints_file}")
+        for src_file in src_files:
+            self.console.print(f"    -r {src_file}")
+
     def report_packages(self, packages: list[ResolvedPackage]) -> None:
         if self.verbosity >= 1:
             for pkg in packages:
@@ -67,19 +78,26 @@ class Reporter:
             f"\n  [bold]Adding constraints:[/] {', '.join(constraints)}"
         )
 
-    def report_clean(self, iteration: int) -> None:
+    def report_clean(
+        self, iteration: int, output_file: str = "requirements.txt"
+    ) -> None:
         self.console.print(
             f"\n  [bold green]No vulnerabilities found.[/] "
-            f"requirements.txt is clean "
+            f"{output_file} is clean "
             f"({'on first pass' if iteration == 1 else f'after {iteration} iterations'})."
         )
 
-    def report_clean_after_filtering(self, iteration: int, filtered_count: int) -> None:
+    def report_clean_after_filtering(
+        self,
+        iteration: int,
+        filtered_count: int,
+        output_file: str = "requirements.txt",
+    ) -> None:
         self.console.print(
             f"\n  [bold green]All clear.[/] "
             f"{filtered_count} vulnerabilit{'y' if filtered_count == 1 else 'ies'} "
             f"filtered by severity/allowlist. "
-            f"requirements.txt is clean after {iteration} iteration{'s' if iteration > 1 else ''}."
+            f"{output_file} is clean after {iteration} iteration{'s' if iteration > 1 else ''}."
         )
 
     def report_unfixable(self, vulns: list[Vulnerability]) -> None:

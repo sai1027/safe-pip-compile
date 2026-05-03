@@ -171,7 +171,7 @@ API calls.
 | --- | --- |
 | Linux | `~/.cache/safe-pip-compile/cache.db` |
 | macOS | `~/Library/Caches/safe-pip-compile/cache.db` |
-| Windows | `%LOCALAPPDATA%\safe-pip-compile\Cache\cache.db` |
+| Windows | `C:\Users\Teja\AppData\Local\safe-pip-compile\Cache\cache.db` |
 
 Cache behavior:
 
@@ -202,18 +202,14 @@ export REQUESTS_CA_BUNDLE=/path/to/corporate-ca-bundle.pem
 Lookup order:
 
 ```text
---cert
-SSL_CERT_FILE
-REQUESTS_CA_BUNDLE
-CURL_CA_BUNDLE
-system default
+Lookup order: `--cert` flag > `SSL_CERT_FILE` > `REQUESTS_CA_BUNDLE` > `CURL_CA_BUNDLE` > system default.
 ```
 
 ## Development
 
 ```bash
 pip install -e ".[dev]"
-python -m pytest tests -q
+python -m pytest tests -v
 ```
 
 ## Author

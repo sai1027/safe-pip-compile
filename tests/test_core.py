@@ -196,7 +196,7 @@ def test_temp_paths_are_reported_and_removed_from_output(
     assert result.status == CompileStatus.CLEAN
     assert str(temp_src) not in output
     assert "-c " not in output
-    assert "#   -r requirements.in" in output
+    assert "#   User" in output
     mock_reporter.report_resolver_inputs.assert_called()
 
 

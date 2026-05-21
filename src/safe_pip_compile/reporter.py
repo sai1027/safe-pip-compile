@@ -21,7 +21,7 @@ class Reporter:
 
     def start_iteration(self, n: int, max_n: int) -> None:
         self.console.print(
-            f"\n[bold blue][Iteration {n}/{max_n}][/] Running pip-compile..."
+            f"\n[bold blue][Iteration {n}/{max_n}][/]"
         )
 
     def report_resolver_inputs(

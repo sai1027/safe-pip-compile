@@ -1,8 +1,14 @@
 from __future__ import annotations
 
+import importlib.metadata
 import sys
 
 import click
+
+try:
+    __version__ = importlib.metadata.version("safe-pip-compile")
+except importlib.metadata.PackageNotFoundError:
+    __version__ = "unknown"
 
 from safe_pip_compile.allowlist import load_allowlist
 from safe_pip_compile.cache import VulnCache, get_cache_db_path, get_cache_dir
@@ -30,6 +36,13 @@ EXIT_ERROR = 3
         ignore_unknown_options=True,
         allow_extra_args=True,
     ),
+)
+@click.version_option(
+    __version__,
+    "--version",
+    "-V",
+    package_name="safe-pip-compile",
+    message="%(prog)s version %(version)s",
 )
 @click.argument("src_files", nargs=-1, type=click.Path(exists=True))
 @click.option("-o", "--output-file", type=click.Path(), default=None,

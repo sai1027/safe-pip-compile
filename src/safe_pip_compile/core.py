@@ -77,12 +77,20 @@ def run_safe_compile(
             if constraints_file_arg or _has_temporary_source(src_files):
                 reporter.report_resolver_inputs(src_files, constraints_file_arg)
 
-            pip_result = run_pip_compile(
-                src_files=src_files,
-                output_file=output_file if not dry_run else None,
-                extra_args=passthrough_args,
-                constraints_file=constraints_file_arg,
+            from contextlib import nullcontext
+            console = getattr(reporter, "console", None)
+            status_ctx = (
+                console.status("[bold white]Resolving dependencies...", spinner="dots")
+                if console is not None
+                else nullcontext()
             )
+            with status_ctx:
+                pip_result = run_pip_compile(
+                    src_files=src_files,
+                    output_file=output_file if not dry_run else None,
+                    extra_args=passthrough_args,
+                    constraints_file=constraints_file_arg,
+                )
 
             if pip_result.failed:
                 iter_result.pip_compile_succeeded = False

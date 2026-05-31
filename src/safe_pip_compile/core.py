@@ -163,27 +163,66 @@ def run_safe_compile(
                 })
                 vulnerabilities = raw_client.fetch_vulnerabilities(all_vuln_ids)
 
-                for vuln in vulnerabilities:
-                    if not vuln.affected_package:
-                        for pkg_name, vid_list in vuln_map.items():
-                            if vuln.id in vid_list:
-                                vulnerabilities = [
-                                    Vulnerability(
-                                        id=v.id,
-                                        aliases=v.aliases,
-                                        summary=v.summary,
-                                        severity=v.severity,
-                                        cvss_score=v.cvss_score,
-                                        affected_package=pkg_name,
-                                        affected_version=next(
-                                            (p.version for p in packages if p.normalized_name == pkg_name.lower().replace("_", "-")),
-                                            v.affected_version,
-                                        ),
-                                        fixed_versions=v.fixed_versions,
-                                        details_url=v.details_url,
-                                    ) if v.id == vuln.id else v
-                                    for v in vulnerabilities
-                                ]
+                # Map each fetched vulnerability back to its queried package.
+                # A vulnerability may not carry affected_package in the OSV
+                # response, so we derive it from the vuln_map query context.
+                _vid_to_pkg: dict[str, str] = {
+                    vid: pkg_name
+                    for pkg_name, vid_list in vuln_map.items()
+                    for vid in vid_list
+                }
+                _pkg_ver_map: dict[str, str] = {
+                    pkg.normalized_name: pkg.version for pkg in packages
+                }
+                _filled: list[Vulnerability] = []
+                for v in vulnerabilities:
+                    if not v.affected_package:
+                        _pname = _vid_to_pkg.get(v.id, "")
+                        _norm = _pname.lower().replace("_", "-")
+                        v = Vulnerability(
+                            id=v.id,
+                            aliases=v.aliases,
+                            summary=v.summary,
+                            severity=v.severity,
+                            cvss_score=v.cvss_score,
+                            affected_package=_pname,
+                            affected_version=_pkg_ver_map.get(_norm, ""),
+                            fixed_versions=v.fixed_versions,
+                            details_url=v.details_url,
+                        )
+                    _filled.append(v)
+                vulnerabilities = _filled
+
+            # ----------------------------------------------------------------
+            # Unified post-processing (both cached and non-cached paths):
+            #   1. Deduplicate by (normalised_package, vuln_id) — the same CVE
+            #      can arrive via multiple query paths (e.g. "Pillow"/"pillow").
+            #   2. Fill in affected_version from the resolved packages list for
+            #      any remaining empty values (safety net for the cached path).
+            # ----------------------------------------------------------------
+            _pv: dict[str, str] = {pkg.normalized_name: pkg.version for pkg in packages}
+            _seen_keys: set[tuple[str, str]] = set()
+            _deduped: list[Vulnerability] = []
+            for v in vulnerabilities:
+                _norm = v.affected_package.lower().replace("_", "-") if v.affected_package else ""
+                _key = (_norm, v.id)
+                if _key in _seen_keys:
+                    continue
+                _seen_keys.add(_key)
+                if v.affected_package and not v.affected_version:
+                    v = Vulnerability(
+                        id=v.id,
+                        aliases=v.aliases,
+                        summary=v.summary,
+                        severity=v.severity,
+                        cvss_score=v.cvss_score,
+                        affected_package=v.affected_package,
+                        affected_version=_pv.get(_norm, ""),
+                        fixed_versions=v.fixed_versions,
+                        details_url=v.details_url,
+                    )
+                _deduped.append(v)
+            vulnerabilities = _deduped
 
             if not vulnerabilities:
                 reporter.report_clean(iteration, output_file)

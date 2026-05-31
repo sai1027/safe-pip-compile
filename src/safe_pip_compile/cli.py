@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.metadata
+import os
 import sys
 
 import click
@@ -44,7 +45,7 @@ EXIT_ERROR = 3
     package_name="safe-pip-compile",
     message="%(prog)s version %(version)s",
 )
-@click.argument("src_files", nargs=-1, type=click.Path(exists=True))
+@click.argument("src_files", nargs=-1, type=str)
 @click.option("-o", "--output-file", type=click.Path(), default=None,
               help="Output file path (passed to pip-compile)")
 @click.option("--min-severity",
@@ -90,6 +91,27 @@ def main(ctx, src_files, output_file, min_severity, allow_list,
     """
     passthrough_args = list(ctx.args)
     reporter = Reporter(verbosity=verbose)
+
+    # Separate src_files positional args into real paths vs pip-compile flags.
+    # Click cannot tell these apart when ignore_unknown_options=True, so we do it here.
+    real_src_files: list[str] = []
+    for arg in src_files:
+        if arg.startswith("-"):
+            # Looks like a flag — pass it through to pip-compile.
+            passthrough_args.append(arg)
+            if verbose:
+                reporter.console.print(
+                    f"[dim]Passing unknown flag to pip-compile: {arg}[/]"
+                )
+        else:
+            if not os.path.exists(arg):
+                reporter.console.print(
+                    f"[red]Error:[/] Path '{arg}' does not exist."
+                )
+                sys.exit(EXIT_ERROR)
+            real_src_files.append(arg)
+    src_files = tuple(real_src_files)
+
 
     file_config = load_config()
     config = file_config.merge_cli(
@@ -240,7 +262,6 @@ def main(ctx, src_files, output_file, min_severity, allow_list,
         else:
             sys.exit(EXIT_CLEAN)
     finally:
-        import os
         for f in temp_files_to_cleanup:
             try:
                 os.remove(f)

@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from safe_pip_compile.models import Vulnerability
+    from safe_pip_compile.models import PinnedBlockingPackage, Vulnerability
 
 
 class SafePipCompileError(Exception):
@@ -50,3 +50,21 @@ class MaxIterationsExceeded(SafePipCompileError):
         self.remaining_vulns = remaining_vulns
         ids = ", ".join(v.display_id for v in remaining_vulns[:5])
         super().__init__(f"Max iterations reached. Remaining CVEs: {ids}")
+
+
+class PinnedPackagesBlockError(SafePipCompileError):
+    """Raised when pinned packages in source files block CVE fixes.
+
+    Carries the full list so cli.py can drive the interactive unpin prompt.
+    """
+
+    def __init__(
+        self,
+        pinned_packages: list[PinnedBlockingPackage],
+        blocking_vulns: list[Vulnerability],
+    ):
+        self.pinned_packages = pinned_packages
+        self.blocking_vulns = blocking_vulns
+        super().__init__(
+            f"{len(pinned_packages)} pinned package(s) block CVE fixes"
+        )

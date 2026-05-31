@@ -20,11 +20,16 @@ from safe_pip_compile.exceptions import (
     OSVAPIError,
     OSVNetworkError,
     PipCompileError,
+    PinnedPackagesBlockError,
     SafePipCompileError,
     UnsolvableConstraintsError,
 )
 from safe_pip_compile.models import CompileStatus
 from safe_pip_compile.reporter import Reporter
+from safe_pip_compile.terminal_ui import (
+    multiselect_prompt,
+    write_cve_warning_to_output,
+)
 
 EXIT_CLEAN = 0
 EXIT_UNRESOLVED = 1
@@ -232,15 +237,120 @@ def main(ctx, src_files, output_file, min_severity, allow_list,
                     sys.exit(EXIT_COMPILE_FAILED)
 
                 reporter.console.print(
-                    "\n[yellow]Consider adding some CVEs to an allowlist with --allow-list[/]"
+                    "\n[yellow]* Consider unpinning non critical libraries/ adding some CVEs to an allowlist with --allow-list[/]"
                 )
                 sys.exit(EXIT_COMPILE_FAILED)
+            except PinnedPackagesBlockError as e:
+                pinned = e.pinned_packages
+
+                reporter.console.print(
+                    f"\n[yellow]⚠  {len(pinned)} pinned "
+                    f"package{'s' if len(pinned) > 1 else ''} "
+                    "have CVEs that require a version upgrade to fix:[/]"
+                )
+                for pkg in pinned:
+                    vuln_str = ", ".join(pkg.vuln_ids[:2])
+                    fix_str = f">={pkg.fix_versions[0]}" if pkg.fix_versions else "no fix"
+                    reporter.console.print(
+                        f"   [cyan]{pkg.name}=={pkg.version}[/]  →  "
+                        f"[red]{vuln_str}[/] ({pkg.severity.name}, fix: {fix_str})"
+                    )
+
+                reporter.console.print()
+                reporter.console.print(
+                    "Unpin all required libraries? "
+                    "[[bold green]y[/]]es / [[bold red]n[/]]o / [[bold blue]c[/]]ustom: ",
+                    end="",
+                )
+
+                try:
+                    choice = input().strip().lower()
+                except (EOFError, KeyboardInterrupt):
+                    choice = "n"
+
+                while choice not in ("y", "yes", "n", "no", "c", "custom"):
+                    reporter.console.print(
+                        "  Please enter [bold]y[/], [bold]n[/], or [bold]c[/]: ",
+                        end="",
+                    )
+                    try:
+                        choice = input().strip().lower()
+                    except (EOFError, KeyboardInterrupt):
+                        choice = "n"
+                        break
+
+                if choice in ("y", "yes"):
+                    # Constrain all detected packages to their minimum safe version.
+                    for pkg in pinned:
+                        min_ver = pkg.fix_versions[0] if pkg.fix_versions else None
+                        new_src, changes = _unpin_package_to_temp(
+                            src_files, pkg.name, get_cache_dir(), min_version=min_ver
+                        )
+                        for orig, updated in changes:
+                            reporter.console.print(
+                                f"  [dim]Changed:[/] {orig} → {updated}"
+                            )
+                        for f in new_src:
+                            if f not in src_files and f not in temp_files_to_cleanup:
+                                temp_files_to_cleanup.append(f)
+                        src_files = new_src
+                    reporter.console.print(
+                        f"\n[green]Constrained {len(pinned)} package"
+                        f"{'s' if len(pinned) > 1 else ''} to safe versions. Retrying…[/]\n"
+                    )
+                    continue
+
+                elif choice in ("n", "no"):
+                    # Write CVE warning header into the already-written output file.
+                    if not dry_run:
+                        write_cve_warning_to_output(output_file, pinned)
+                    reporter.console.print(
+                        f"\n[yellow]Warning:[/] Dependencies are resolved in "
+                        f"{output_file} but the following packages still have "
+                        "CVEs due to pinned versions. Review before using in production."
+                    )
+                    reporter.report_vulnerabilities(e.blocking_vulns)
+                    sys.exit(EXIT_UNRESOLVED)
+
+                else:  # custom
+                    selected_indices = multiselect_prompt(pinned)
+                    if not selected_indices:
+                        reporter.console.print(
+                            "\n[yellow]No packages selected — skipping unpin.[/]"
+                        )
+                        if not dry_run:
+                            write_cve_warning_to_output(output_file, pinned)
+                        reporter.report_vulnerabilities(e.blocking_vulns)
+                        sys.exit(EXIT_UNRESOLVED)
+
+                    selected = [pinned[i] for i in selected_indices]
+                    for pkg in selected:
+                        min_ver = pkg.fix_versions[0] if pkg.fix_versions else None
+                        new_src, changes = _unpin_package_to_temp(
+                            src_files, pkg.name, get_cache_dir(), min_version=min_ver
+                        )
+                        for orig, updated in changes:
+                            reporter.console.print(
+                                f"  [dim]Changed:[/] {orig} → {updated}"
+                            )
+                        for f in new_src:
+                            if f not in src_files and f not in temp_files_to_cleanup:
+                                temp_files_to_cleanup.append(f)
+                        src_files = new_src
+                    reporter.console.print(
+                        f"\n[green]Constrained {len(selected)} package"
+                        f"{'s' if len(selected) > 1 else ''} to safe versions. Retrying…[/]\n"
+                    )
+                    continue
+
+
             except (OSVAPIError, OSVNetworkError) as e:
                 reporter.console.print(f"\n[red]OSV.dev error:[/] {e}")
                 sys.exit(EXIT_ERROR)
             except SafePipCompileError as e:
                 reporter.console.print(f"\n[red]Error:[/] {e}")
                 sys.exit(EXIT_ERROR)
+
 
         reporter.report_final_summary(result)
 
@@ -273,7 +383,14 @@ def _unpin_package_to_temp(
     src_files: tuple[str, ...],
     pkg_name: str,
     cache_dir: str,
+    min_version: str | None = None,
 ) -> tuple[tuple[str, ...], list[tuple[str, str]]]:
+    """Rewrite a source file to replace a pinned package constraint.
+
+    If *min_version* is given the pin is replaced with ``pkg>=min_version``
+    (i.e. the minimum known-safe version).  Otherwise the constraint is
+    removed entirely, leaving just the bare package name.
+    """
     import re
     import tempfile
     import os
@@ -282,6 +399,7 @@ def _unpin_package_to_temp(
         rf"^({re.escape(pkg_name)})(?:==|>=|<=|~=|!=|<|>)[^\s#]+",
         re.IGNORECASE,
     )
+    replacement = rf"\1>={min_version}" if min_version else r"\1"
 
     new_src_files = []
     changes = []
@@ -295,7 +413,7 @@ def _unpin_package_to_temp(
             new_lines = []
             for line in lines:
                 if pattern.match(line):
-                    new_line = pattern.sub(r"\1", line)
+                    new_line = pattern.sub(replacement, line)
                     new_lines.append(new_line)
                     changes.append((line.strip(), new_line.strip()))
                     changed = True
@@ -316,6 +434,7 @@ def _unpin_package_to_temp(
             new_src_files.append(file_path)
 
     return tuple(new_src_files), changes
+
 
 if __name__ == "__main__":
     main()

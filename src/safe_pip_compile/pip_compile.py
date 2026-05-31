@@ -41,6 +41,9 @@ def run_pip_compile(
     if constraints_file:
         cmd.extend(["-c", constraints_file])
 
+    # Always suppress pip-compile's own header; we prepend our own in post-processing.
+    cmd.append("--no-header")
+
     if extra_args:
         cmd.extend(extra_args)
 

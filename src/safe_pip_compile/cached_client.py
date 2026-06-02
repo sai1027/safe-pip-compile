@@ -53,7 +53,25 @@ class CachedOSVClient:
             cached = self._cache.lookup(pkg.name, pkg.version)
             if cached is not None:
                 self._cache_hits += 1
-                all_vulns.extend(cached)
+                # Always re-stamp affected_version with the current resolved
+                # version.  The stored value may be empty when the cache entry
+                # was written before this field was tracked, or when the OSV
+                # API omits it (which it always does — we derive it from the
+                # query context, not the API response).
+                all_vulns.extend(
+                    Vulnerability(
+                        id=v.id,
+                        aliases=v.aliases,
+                        summary=v.summary,
+                        severity=v.severity,
+                        cvss_score=v.cvss_score,
+                        affected_package=v.affected_package or pkg.name,
+                        affected_version=pkg.version,
+                        fixed_versions=v.fixed_versions,
+                        details_url=v.details_url,
+                    )
+                    for v in cached
+                )
             else:
                 self._cache_misses += 1
                 uncached_packages.append(pkg)
@@ -83,9 +101,11 @@ class CachedOSVClient:
 
         for pkg_name, vuln_ids in vuln_map.items():
             pkg_vulns: list[Vulnerability] = []
+            # Use normalized name for lookup to handle case differences
+            # (e.g. "Pillow" from pip-compile vs "pillow" from OSV).
             pkg_version = next(
                 (p.version for p in uncached_packages
-                 if p.name == pkg_name),
+                 if p.normalized_name == pkg_name.lower().replace("_", "-")),
                 "",
             )
 
@@ -94,18 +114,19 @@ class CachedOSVClient:
                 if not v:
                     continue
 
-                if not v.affected_package or v.affected_package.lower().replace("_", "-") != pkg_name.lower().replace("_", "-"):
-                    v = Vulnerability(
-                        id=v.id,
-                        aliases=v.aliases,
-                        summary=v.summary,
-                        severity=v.severity,
-                        cvss_score=v.cvss_score,
-                        affected_package=pkg_name,
-                        affected_version=pkg_version,
-                        fixed_versions=v.fixed_versions,
-                        details_url=v.details_url,
-                    )
+                # Always stamp affected_package and affected_version from the
+                # query context so the stored Vulnerability is self-contained.
+                v = Vulnerability(
+                    id=v.id,
+                    aliases=v.aliases,
+                    summary=v.summary,
+                    severity=v.severity,
+                    cvss_score=v.cvss_score,
+                    affected_package=v.affected_package or pkg_name,
+                    affected_version=pkg_version,
+                    fixed_versions=v.fixed_versions,
+                    details_url=v.details_url,
+                )
 
                 pkg_vulns.append(v)
 
@@ -113,6 +134,7 @@ class CachedOSVClient:
             all_vulns.extend(pkg_vulns)
 
         return all_vulns
+
 
     @property
     def cache_hits(self) -> int:

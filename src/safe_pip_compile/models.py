@@ -76,6 +76,17 @@ class AllowlistEntry:
         return (today or date.today()) > self.expires
 
 
+@dataclass(frozen=True)
+class PinnedBlockingPackage:
+    """A package pinned with == in a source file that has blocking CVEs with available fixes."""
+
+    name: str
+    version: str
+    vuln_ids: tuple[str, ...]
+    fix_versions: tuple[str, ...]
+    severity: Severity
+
+
 @dataclass
 class IterationResult:
     iteration: int

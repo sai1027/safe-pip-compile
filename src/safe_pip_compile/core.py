@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 import sys
 import tempfile
 from typing import TYPE_CHECKING
@@ -11,6 +12,7 @@ from safe_pip_compile.cached_client import CachedOSVClient
 from safe_pip_compile.constraints import generate_constraints, merge_constraints
 from safe_pip_compile.exceptions import (
     PipCompileError,
+    PinnedPackagesBlockError,
     UnsolvableConstraintsError,
 )
 from safe_pip_compile.models import (
@@ -18,6 +20,7 @@ from safe_pip_compile.models import (
     CompileResult,
     CompileStatus,
     IterationResult,
+    PinnedBlockingPackage,
     Severity,
     Vulnerability,
 )
@@ -163,30 +166,70 @@ def run_safe_compile(
                 })
                 vulnerabilities = raw_client.fetch_vulnerabilities(all_vuln_ids)
 
-                for vuln in vulnerabilities:
-                    if not vuln.affected_package:
-                        for pkg_name, vid_list in vuln_map.items():
-                            if vuln.id in vid_list:
-                                vulnerabilities = [
-                                    Vulnerability(
-                                        id=v.id,
-                                        aliases=v.aliases,
-                                        summary=v.summary,
-                                        severity=v.severity,
-                                        cvss_score=v.cvss_score,
-                                        affected_package=pkg_name,
-                                        affected_version=next(
-                                            (p.version for p in packages if p.normalized_name == pkg_name.lower().replace("_", "-")),
-                                            v.affected_version,
-                                        ),
-                                        fixed_versions=v.fixed_versions,
-                                        details_url=v.details_url,
-                                    ) if v.id == vuln.id else v
-                                    for v in vulnerabilities
-                                ]
+                # Map each fetched vulnerability back to its queried package.
+                # A vulnerability may not carry affected_package in the OSV
+                # response, so we derive it from the vuln_map query context.
+                _vid_to_pkg: dict[str, str] = {
+                    vid: pkg_name
+                    for pkg_name, vid_list in vuln_map.items()
+                    for vid in vid_list
+                }
+                _pkg_ver_map: dict[str, str] = {
+                    pkg.normalized_name: pkg.version for pkg in packages
+                }
+                _filled: list[Vulnerability] = []
+                for v in vulnerabilities:
+                    if not v.affected_package:
+                        _pname = _vid_to_pkg.get(v.id, "")
+                        _norm = _pname.lower().replace("_", "-")
+                        v = Vulnerability(
+                            id=v.id,
+                            aliases=v.aliases,
+                            summary=v.summary,
+                            severity=v.severity,
+                            cvss_score=v.cvss_score,
+                            affected_package=_pname,
+                            affected_version=_pkg_ver_map.get(_norm, ""),
+                            fixed_versions=v.fixed_versions,
+                            details_url=v.details_url,
+                        )
+                    _filled.append(v)
+                vulnerabilities = _filled
+
+            # ----------------------------------------------------------------
+            # Unified post-processing (both cached and non-cached paths):
+            #   1. Deduplicate by (normalised_package, vuln_id) — the same CVE
+            #      can arrive via multiple query paths (e.g. "Pillow"/"pillow").
+            #   2. Fill in affected_version from the resolved packages list for
+            #      any remaining empty values (safety net for the cached path).
+            # ----------------------------------------------------------------
+            _pv: dict[str, str] = {pkg.normalized_name: pkg.version for pkg in packages}
+            _seen_keys: set[tuple[str, str]] = set()
+            _deduped: list[Vulnerability] = []
+            for v in vulnerabilities:
+                _norm = v.affected_package.lower().replace("_", "-") if v.affected_package else ""
+                _key = (_norm, v.id)
+                if _key in _seen_keys:
+                    continue
+                _seen_keys.add(_key)
+                if v.affected_package and not v.affected_version:
+                    v = Vulnerability(
+                        id=v.id,
+                        aliases=v.aliases,
+                        summary=v.summary,
+                        severity=v.severity,
+                        cvss_score=v.cvss_score,
+                        affected_package=v.affected_package,
+                        affected_version=_pv.get(_norm, ""),
+                        fixed_versions=v.fixed_versions,
+                        details_url=v.details_url,
+                    )
+                _deduped.append(v)
+            vulnerabilities = _deduped
 
             if not vulnerabilities:
                 reporter.report_clean(iteration, output_file)
+
                 all_iterations.append(iter_result)
                 return CompileResult(
                     status=CompileStatus.CLEAN,
@@ -245,6 +288,13 @@ def run_safe_compile(
                     remaining_vulns=blocking_vulns,
                     all_vulns_found=all_vulns,
                 )
+
+            # Proactively detect pinned packages that would block the next pip-compile run.
+            # We do this before accumulating constraints so the user gets one batch prompt
+            # instead of discovering conflicts one-by-one through pip-compile failures.
+            pinned_blockers = _find_pinned_blockers(blocking_vulns, src_files)
+            if pinned_blockers:
+                raise PinnedPackagesBlockError(pinned_blockers, blocking_vulns)
 
             accumulated_constraints = merge_constraints(
                 accumulated_constraints, new_constraints
@@ -358,3 +408,69 @@ def _path_variants(path: str) -> tuple[str, ...]:
         absolute.replace("\\", "/"),
     }
     return tuple(variants)
+
+
+def _find_pinned_blockers(
+    blocking_vulns: list[Vulnerability],
+    src_files: list[str],
+) -> list[PinnedBlockingPackage]:
+    """Detect packages that are pinned with == in source files and have fixable blocking CVEs.
+
+    Only non-temporary source files are scanned (temp files have already been unpinned).
+    Returns one PinnedBlockingPackage per affected package, with all vuln IDs and fix
+    versions aggregated and the worst severity recorded.
+    """
+    real_src_files = [f for f in src_files if not _is_temporary_source(f)]
+    if not real_src_files:
+        return []
+
+    # Aggregate vuln data per package name (normalized).
+    vuln_by_pkg: dict[str, list[Vulnerability]] = {}
+    for vuln in blocking_vulns:
+        if not vuln.affected_package or not vuln.fixed_versions:
+            # Skip unfixable vulns — generate_constraints already handled them.
+            continue
+        key = vuln.affected_package.lower().replace("_", "-")
+        vuln_by_pkg.setdefault(key, []).append(vuln)
+
+    result: list[PinnedBlockingPackage] = []
+    for _key, vulns in vuln_by_pkg.items():
+        pkg_name = vulns[0].affected_package
+        # Build a pattern that matches both - and _ separators (PEP 503).
+        escaped = re.escape(pkg_name)
+        normalized_pat = escaped.replace(r"\-", r"[-_]").replace(r"\_", r"[-_]")
+        pin_pattern = re.compile(rf"^\s*{normalized_pat}\s*==", re.IGNORECASE)
+
+        is_pinned = False
+        for src_file in real_src_files:
+            try:
+                with open(src_file, encoding="utf-8") as fh:
+                    for line in fh:
+                        if pin_pattern.match(line):
+                            is_pinned = True
+                            break
+            except OSError:
+                pass
+            if is_pinned:
+                break
+
+        if not is_pinned:
+            continue
+
+        all_vuln_ids = tuple(dict.fromkeys(v.id for v in vulns))
+        all_fix_versions = tuple(dict.fromkeys(fv for v in vulns for fv in v.fixed_versions))
+        worst_severity = max(vulns, key=lambda v: v.severity.value).severity
+        affected_version = vulns[0].affected_version
+
+        result.append(
+            PinnedBlockingPackage(
+                name=pkg_name,
+                version=affected_version,
+                vuln_ids=all_vuln_ids,
+                fix_versions=all_fix_versions,
+                severity=worst_severity,
+            )
+        )
+
+    return result
+

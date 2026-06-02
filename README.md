@@ -143,15 +143,81 @@ PYSEC, and GHSA identifiers.
 
 ## pyproject.toml config
 
+Every CLI flag can be set as a project-level default in `pyproject.toml`.
+CLI flags always take precedence over file settings.
+
+### Option reference
+
+| `pyproject.toml` key | CLI equivalent | Example value |
+|---|---|---|
+| `max-iterations` | `--max-iterations INT` | `10` |
+| `min-severity` | `--min-severity LEVEL` | `"high"` |
+| `allowlist` | `--allow-list PATH` | `"cve-allowlist.yaml"` |
+| `strict` | `--strict / --no-strict` | `true` |
+| `output-file` | `-o / --output-file PATH` | `"requirements.txt"` |
+| `json-report` | `--json-report PATH` | `"audit.json"` |
+| `dry-run` | `--dry-run` | `false` |
+| `cert` | `--cert PATH` | `"/etc/ssl/certs/corp-ca.pem"` |
+| `no-cache` | `--no-cache` | `false` |
+| `refresh-cache` | `--refresh-cache` | `false` |
+| `verbose` | `-v` / `-vv` | `1` |
+
+### pyproject.toml
+
 ```toml
 [tool.safe-pip-compile]
-max-iterations = 10
-min-severity = "high"
-allowlist = "cve-allowlist.yaml"
-strict = true
+# ── Core resolution ────────────────────────────────────────
+max-iterations = 10          # Maximum compile/audit loops (default: 10)
+min-severity   = "high"      # Minimum blocking severity: critical/high/medium/low
+allowlist      = "cve-allowlist.yaml"  # Path to CVE allowlist YAML
+strict         = true        # Fail on unresolved CVEs (default: true)
+
+# ── Output / reporting ─────────────────────────────────────
+output-file  = "requirements.txt"   # Default output file (-o)
+json-report  = "audit.json"         # Write JSON vulnerability report
+dry-run      = false                # Preview without writing files
+
+# ── Network / SSL ──────────────────────────────────────────
+cert = "/etc/ssl/certs/corporate-ca.pem"  # CA bundle path (--cert)
+
+# ── Cache ──────────────────────────────────────────────────
+no-cache      = false   # Always query OSV.dev, skip local cache
+refresh-cache = false   # Clear cache before run
+
+# ── Verbosity ──────────────────────────────────────────────
+verbose = 1             # 0 = quiet, 1 = -v, 2 = -vv
+```
+
+### CLI equivalent commands
+
+```bash
+# Core resolution
+safe-pip-compile requirements.in --max-iterations 10
+safe-pip-compile requirements.in --min-severity high
+safe-pip-compile requirements.in --allow-list cve-allowlist.yaml
+safe-pip-compile requirements.in --strict
+safe-pip-compile requirements.in --no-strict
+
+# Output / reporting
+safe-pip-compile requirements.in -o requirements.txt
+safe-pip-compile requirements.in --output-file requirements.txt
+safe-pip-compile requirements.in --json-report audit.json
+safe-pip-compile requirements.in --dry-run
+
+# Network / SSL
+safe-pip-compile requirements.in --cert /etc/ssl/certs/corp-ca.pem
+
+# Cache
+safe-pip-compile requirements.in --no-cache
+safe-pip-compile requirements.in --refresh-cache
+
+# Verbosity
+safe-pip-compile requirements.in -v    # verbose
+safe-pip-compile requirements.in -vv   # extra verbose
 ```
 
 CLI flags override `pyproject.toml` values.
+
 
 ## Exit codes
 

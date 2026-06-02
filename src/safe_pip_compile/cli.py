@@ -41,6 +41,7 @@ EXIT_ERROR = 3
     context_settings=dict(
         ignore_unknown_options=True,
         allow_extra_args=True,
+        help_option_names=["-h", "--help"],
     ),
 )
 @click.version_option(

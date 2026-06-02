@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import os
-import ssl
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Optional, Union
 
@@ -13,17 +12,39 @@ from safe_pip_compile.models import ResolvedPackage, Vulnerability
 from safe_pip_compile.severity import extract_severity_from_osv
 
 
-def _resolve_ssl_cert() -> Union[str, bool, None]:
-    """Find a CA bundle from environment variables.
+def _build_ssl_verify(cert_path: Optional[str]) -> Union[str, bool]:
+    """Resolve the CA bundle to use for HTTPS requests, using the same
+    priority order as pip and requests:
 
-    Checks SSL_CERT_FILE, REQUESTS_CA_BUNDLE, and CURL_CA_BUNDLE
-    (same env vars that pip, requests, and httpx respect).
+    1. Explicit ``--cert`` flag / ``cert_path`` argument
+    2. ``SSL_CERT_FILE``, ``REQUESTS_CA_BUNDLE``, ``CURL_CA_BUNDLE`` env vars
+    3. ``certifi`` bundle (the same Mozilla bundle pip ships with)
+    4. ``True``  — httpx/OpenSSL system default
+
+    Returning a path string (rather than an ssl.SSLContext) lets httpx manage
+    the SSLContext internally, which means it also picks up OS-level tweaks
+    such as corporate proxy root CAs injected into certifi or the env vars.
     """
+    # 1. Explicit path
+    if cert_path and os.path.isfile(cert_path):
+        return cert_path
+
+    # 2. Standard env vars (pip, requests, curl all honour these)
     for var in ("SSL_CERT_FILE", "REQUESTS_CA_BUNDLE", "CURL_CA_BUNDLE"):
         path = os.environ.get(var)
         if path and os.path.isfile(path):
             return path
-    return None
+
+    # 3. certifi — the same CA bundle pip uses by default.
+    #    certifi is a direct dependency of httpx so it is always available.
+    try:
+        import certifi  # type: ignore[import-untyped]
+        return certifi.where()
+    except ImportError:
+        pass
+
+    # 4. httpx / OpenSSL system default
+    return True
 
 
 class OSVClient:
@@ -41,14 +62,9 @@ class OSVClient:
         if http_client:
             self._client = http_client
         else:
-            ssl_context = ssl.create_default_context()  
-            resolved = cert_path or _resolve_ssl_cert()
-            if resolved:
-                ssl_context.load_verify_locations(resolved)
-
             self._client = httpx.Client(
                 timeout=30.0,
-                verify=ssl_context,
+                verify=_build_ssl_verify(cert_path),
                 transport=httpx.HTTPTransport(retries=3),
             )
 

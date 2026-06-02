@@ -96,7 +96,9 @@ def main(ctx, src_files, output_file, min_severity, allow_list,
         safe-pip-compile requirements.in -- --generate-hashes
     """
     passthrough_args = list(ctx.args)
-    reporter = Reporter(verbosity=verbose)
+    # Build a temporary reporter using the raw CLI verbosity so we can print
+    # errors during the argument-parsing phase (before config is loaded).
+    early_reporter = Reporter(verbosity=verbose)
 
     # Separate src_files positional args into real paths vs pip-compile flags.
     # Click cannot tell these apart when ignore_unknown_options=True, so we do it here.
@@ -106,12 +108,12 @@ def main(ctx, src_files, output_file, min_severity, allow_list,
             # Looks like a flag — pass it through to pip-compile.
             passthrough_args.append(arg)
             if verbose:
-                reporter.console.print(
+                early_reporter.console.print(
                     f"[dim]Passing unknown flag to pip-compile: {arg}[/]"
                 )
         else:
             if not os.path.exists(arg):
-                reporter.console.print(
+                early_reporter.console.print(
                     f"[red]Error:[/] Path '{arg}' does not exist."
                 )
                 sys.exit(EXIT_ERROR)
@@ -125,13 +127,37 @@ def main(ctx, src_files, output_file, min_severity, allow_list,
         min_severity=min_severity,
         allowlist_path=allow_list,
         strict=strict,
+        output_file=output_file if output_file is not None else None,
+        json_report=json_report if json_report is not None else None,
+        # For boolean flags, only override when the user explicitly passed them
+        # (i.e. the CLI value differs from the Click default of False/0).
+        dry_run=dry_run if dry_run else None,
+        cert=cert if cert is not None else None,
+        no_cache=no_cache if no_cache else None,
+        refresh_cache=refresh_cache if refresh_cache else None,
+        verbose=verbose if verbose else None,
     )
+
+    # Use merged config values as the effective settings for this run.
+    if not json_report:
+        json_report = config.json_report
+    if not dry_run:
+        dry_run = config.dry_run
+    if not cert:
+        cert = config.cert
+    if not no_cache:
+        no_cache = config.no_cache
+    if not refresh_cache:
+        refresh_cache = config.refresh_cache
+    if not verbose:
+        verbose = config.verbose
+    reporter = Reporter(verbosity=verbose)
 
     if not src_files:
         src_files = ("requirements.in",)
 
     if not output_file:
-        output_file = "requirements.txt"
+        output_file = config.output_file or "requirements.txt"
 
     allowlist = []
     if config.allowlist_path:

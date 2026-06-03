@@ -193,7 +193,38 @@ def main(ctx, src_files, output_file, min_severity, allow_list,
             reporter.console.print(f"[yellow]Cache warning:[/] {e} (continuing without cache)")
             cache = None
 
+    # ── OSV preflight check ──────────────────────────────────────────────────
+    # Test SSL cert + connectivity *before* running pip-compile so a bad cert
+    # surfaces in <10 s instead of after pip-compile.
+    from safe_pip_compile.osv_client import OSVClient
+
+    _preflight_client = OSVClient(cert_path=cert)
+    try:
+        with reporter.console.status(
+            "[bold white]Checking OSV.dev connectivity...", spinner="dots"
+        ):
+            _preflight_client.preflight_check()
+        if verbose:
+            reporter.console.print("[dim]OSV.dev connectivity OK[/]")
+    except (OSVNetworkError, OSVAPIError) as e:
+        reporter.console.print(f"\n[red]OSV.dev preflight check failed:[/] {e}")
+        if cert:
+            reporter.console.print(
+                f"  [dim]Cert in use: {cert}[/]\n"
+                "  Tip: verify the path is correct or try a different CA bundle."
+            )
+        sys.exit(EXIT_ERROR)
+    finally:
+        _preflight_client.close()
+    # ────────────────────────────────────────────────────────────────────────
+
     temp_files_to_cleanup = []
+
+    py = sys.version_info
+    reporter.console.print(
+        f"Resolving dependencies for Python {py.major}.{py.minor}.{py.micro}"
+    )
+
     source_display_paths = list(src_files)
     try:
         while True:
@@ -275,13 +306,6 @@ def main(ctx, src_files, output_file, min_severity, allow_list,
                     f"package{'s' if len(pinned) > 1 else ''} "
                     "have CVEs that require a version upgrade to fix:[/]"
                 )
-                for pkg in pinned:
-                    vuln_str = ", ".join(pkg.vuln_ids[:2])
-                    fix_str = f">={pkg.fix_versions[0]}" if pkg.fix_versions else "no fix"
-                    reporter.console.print(
-                        f"   [cyan]{pkg.name}=={pkg.version}[/]  →  "
-                        f"[red]{vuln_str}[/] ({pkg.severity.name}, fix: {fix_str})"
-                    )
 
                 reporter.console.print()
                 reporter.console.print(

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "safe-pip-compile"
-version = "0.1.7"
+version = "0.1.8"
 description = "pip-compile wrapper with CVE awareness"
 readme = "README.md"
 requires-python = ">=3.9"
@@ -68,6 +68,7 @@ markers = [
 target-version = "py39"
 line-length = 100
 
+[tool.ruff.lint]
 ignore = []
 
 [tool.ruff.lint.per-file-ignores]

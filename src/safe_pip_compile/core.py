@@ -457,7 +457,7 @@ def _find_pinned_blockers(
         if not is_pinned:
             continue
 
-        all_vuln_ids = tuple(dict.fromkeys(v.id for v in vulns))
+        all_vuln_ids = tuple(dict.fromkeys(v.display_id for v in vulns))
         all_fix_versions = tuple(dict.fromkeys(fv for v in vulns for fv in v.fixed_versions))
         worst_severity = max(vulns, key=lambda v: v.severity.value).severity
         affected_version = vulns[0].affected_version

@@ -75,12 +75,14 @@ EXIT_ERROR = 3
 @click.option("--cert", type=click.Path(exists=True), default=None,
               help="Path to CA bundle for SSL verification (corporate proxies). "
                    "Also reads SSL_CERT_FILE / REQUESTS_CA_BUNDLE env vars.")
+@click.option("--no-cve", is_flag=True,
+              help="Skip CVE scanning — resolve dependencies only")
 @click.option("-v", "--verbose", count=True,
               help="Increase verbosity (-v, -vv)")
 @click.pass_context
 def main(ctx, src_files, output_file, min_severity, allow_list,
          max_iterations, strict, dry_run, json_report, no_cache,
-         refresh_cache, cert, verbose):
+         refresh_cache, cert, no_cve, verbose):
     """CVE-aware pip-compile wrapper.
 
     Wraps pip-compile and iteratively resolves dependencies while avoiding
@@ -135,6 +137,7 @@ def main(ctx, src_files, output_file, min_severity, allow_list,
         cert=cert if cert is not None else None,
         no_cache=no_cache if no_cache else None,
         refresh_cache=refresh_cache if refresh_cache else None,
+        no_cve=no_cve if no_cve else None,
         verbose=verbose if verbose else None,
     )
 
@@ -149,6 +152,8 @@ def main(ctx, src_files, output_file, min_severity, allow_list,
         no_cache = config.no_cache
     if not refresh_cache:
         refresh_cache = config.refresh_cache
+    if not no_cve:
+        no_cve = config.no_cve
     if not verbose:
         verbose = config.verbose
     reporter = Reporter(verbosity=verbose)
@@ -172,7 +177,7 @@ def main(ctx, src_files, output_file, min_severity, allow_list,
             sys.exit(EXIT_ERROR)
 
     cache = None
-    if not no_cache:
+    if not no_cache and not no_cve:
         try:
             cache = VulnCache()
             cache.open()
@@ -196,33 +201,35 @@ def main(ctx, src_files, output_file, min_severity, allow_list,
     # ── OSV preflight check ──────────────────────────────────────────────────
     # Test SSL cert + connectivity *before* running pip-compile so a bad cert
     # surfaces in <10 s instead of after pip-compile.
-    from safe_pip_compile.osv_client import OSVClient
+    # Skipped entirely when --no-cve is active.
+    if not no_cve:
+        from safe_pip_compile.osv_client import OSVClient
 
-    _preflight_client = OSVClient(cert_path=cert)
-    try:
-        with reporter.console.status(
-            "[bold white]Checking OSV.dev connectivity...", spinner="dots"
-        ):
-            _preflight_client.preflight_check()
-        if verbose:
-            reporter.console.print("[dim]OSV.dev connectivity OK[/]")
-    except (OSVNetworkError, OSVAPIError) as e:
-        reporter.console.print(f"\n[red]OSV.dev preflight check failed:[/] {e}")
-        if cert:
-            reporter.console.print(
-                f"  [dim]Cert in use: {cert}[/]\n"
-                "  Tip: verify the path is correct or try a different CA bundle."
-            )
-        sys.exit(EXIT_ERROR)
-    finally:
-        _preflight_client.close()
+        _preflight_client = OSVClient(cert_path=cert)
+        try:
+            with reporter.console.status(
+                "[bold white]Checking OSV.dev connectivity...", spinner="dots"
+            ):
+                _preflight_client.preflight_check()
+            if verbose:
+                reporter.console.print("[dim]OSV.dev connectivity OK[/]")
+        except (OSVNetworkError, OSVAPIError) as e:
+            reporter.console.print(f"\n[red]OSV.dev preflight check failed:[/] {e}")
+            if cert:
+                reporter.console.print(
+                    f"  [dim]Cert in use: {cert}[/]\n"
+                    "  Tip: verify the path is correct or try a different CA bundle."
+                )
+            sys.exit(EXIT_ERROR)
+        finally:
+            _preflight_client.close()
     # ────────────────────────────────────────────────────────────────────────
 
     temp_files_to_cleanup = []
 
     py = sys.version_info
     reporter.console.print(
-        f"Resolving dependencies for Python {py.major}.{py.minor}.{py.micro}"
+        f"\nResolving dependencies for Python {py.major}.{py.minor}.{py.micro}"
     )
 
     source_display_paths = list(src_files)
@@ -238,6 +245,7 @@ def main(ctx, src_files, output_file, min_severity, allow_list,
                     max_iterations=config.max_iterations,
                     dry_run=dry_run,
                     reporter=reporter,
+                    skip_cve=no_cve,
                     cache=cache,
                     cert_path=cert,
                     source_display_paths=source_display_paths,
@@ -403,7 +411,8 @@ def main(ctx, src_files, output_file, min_severity, allow_list,
                 sys.exit(EXIT_ERROR)
 
 
-        reporter.report_final_summary(result)
+        if not no_cve:
+            reporter.report_final_summary(result)
 
         if json_report:
             reporter.generate_json_report(json_report, result)

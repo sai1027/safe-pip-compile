@@ -28,6 +28,9 @@ class Config:
     no_cache: bool = False
     refresh_cache: bool = False
 
+    # CVE scanning
+    no_cve: bool = False
+
     # Verbosity (0 = quiet, 1 = -v, 2 = -vv)
     verbose: int = 0
 
@@ -43,6 +46,7 @@ class Config:
         cert: str | None = None,
         no_cache: bool | None = None,
         refresh_cache: bool | None = None,
+        no_cve: bool | None = None,
         verbose: int | None = None,
     ) -> Config:
         """Return a new Config with CLI values taking precedence over file config."""
@@ -57,6 +61,7 @@ class Config:
             cert=cert if cert is not None else self.cert,
             no_cache=no_cache if no_cache is not None else self.no_cache,
             refresh_cache=refresh_cache if refresh_cache is not None else self.refresh_cache,
+            no_cve=no_cve if no_cve is not None else self.no_cve,
             verbose=verbose if verbose is not None else self.verbose,
         )
 
@@ -126,6 +131,10 @@ def _parse_pyproject(filepath: str) -> Config:
         config.no_cache = bool(tool_config["no-cache"])
     if "refresh-cache" in tool_config:
         config.refresh_cache = bool(tool_config["refresh-cache"])
+
+    # ── CVE scanning ─────────────────────────────────────────────────────────
+    if "no-cve" in tool_config:
+        config.no_cve = bool(tool_config["no-cve"])
 
     # ── Verbosity ────────────────────────────────────────────────────────────
     if "verbose" in tool_config:

@@ -41,6 +41,7 @@ def run_safe_compile(
     max_iterations: int,
     dry_run: bool,
     reporter: Reporter,
+    skip_cve: bool = False,
     osv_client: OSVClient | None = None,
     cache: VulnCache | None = None,
     cert_path: str | None = None,
@@ -118,6 +119,25 @@ def run_safe_compile(
                     constraints_path=constraints_path,
                     src_files=src_files,
                     source_display_paths=source_display_paths,
+                )
+
+            # --no-cve: skip OSV scanning entirely and return after the first
+            # successful pip-compile pass.
+            if skip_cve:
+                packages = parse_requirements(
+                    output_file if not dry_run else _get_dry_run_output(pip_result, src_files)
+                )
+                iter_result.packages = packages
+                reporter.report_packages(packages)
+                reporter.console.print(
+                    "[dim]CVE scanning skipped (--no-cve)[/]"
+                )
+                all_iterations.append(iter_result)
+                return CompileResult(
+                    status=CompileStatus.CLEAN,
+                    iterations=all_iterations,
+                    final_packages=packages,
+                    all_vulns_found=[],
                 )
 
             if dry_run and iteration == 1:

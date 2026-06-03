@@ -220,6 +220,11 @@ def main(ctx, src_files, output_file, min_severity, allow_list,
 
     temp_files_to_cleanup = []
 
+    py = sys.version_info
+    reporter.console.print(
+        f"Resolving dependencies for Python {py.major}.{py.minor}.{py.micro}"
+    )
+
     source_display_paths = list(src_files)
     try:
         while True:

@@ -275,13 +275,6 @@ def main(ctx, src_files, output_file, min_severity, allow_list,
                     f"package{'s' if len(pinned) > 1 else ''} "
                     "have CVEs that require a version upgrade to fix:[/]"
                 )
-                for pkg in pinned:
-                    vuln_str = ", ".join(pkg.vuln_ids[:2])
-                    fix_str = f">={pkg.fix_versions[0]}" if pkg.fix_versions else "no fix"
-                    reporter.console.print(
-                        f"   [cyan]{pkg.name}=={pkg.version}[/]  →  "
-                        f"[red]{vuln_str}[/] ({pkg.severity.name}, fix: {fix_str})"
-                    )
 
                 reporter.console.print()
                 reporter.console.print(

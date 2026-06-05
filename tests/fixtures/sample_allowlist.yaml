@@ -1,7 +1,29 @@
 allowed_cves:
+  # CVE-id entry: suppress a specific CVE by ID (any package)
   - id: CVE-2024-12345
     reason: "Not applicable - we don't use QuerySet.values() with user input"
     expires: 2027-12-31
 
+  # CVE-id entry: suppress by GHSA ID, no expiry
   - id: GHSA-urllib3-vuln
     reason: "Accepted risk, tracked in JIRA-456"
+
+  # Package entry: suppress ALL CVEs for requests (all versions)
+  - package: requests
+    reason: "Legacy dependency, accepted risk tracked in JIRA-789"
+
+  # Package entry: suppress LOW + MEDIUM CVEs for pillow (all versions)
+  - package: pillow
+    severity: medium
+    reason: "Low/medium severity accepted; high+ still blocks"
+
+  # Package entry: suppress all CVEs for django within a version range
+  - package: django
+    versions: [">=3.2.0", "<4.0.0"]
+    reason: "Django 3.x LTS accepted risk"
+    expires: 2028-04-01
+
+  # Package entry: suppress all CVEs for an exact pinned version of cryptography
+  - package: cryptography
+    versions: ["==41.0.0"]
+    reason: "Patched internally, waiting for upstream release"

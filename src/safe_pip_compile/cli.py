@@ -12,7 +12,7 @@ except importlib.metadata.PackageNotFoundError:
     __version__ = "unknown"
 
 from safe_pip_compile.allowlist import load_allowlist
-from safe_pip_compile.cache import VulnCache, get_cache_db_path, get_cache_dir
+from safe_pip_compile.cache import PipCompileCache, VulnCache, get_cache_db_path, get_cache_dir
 from safe_pip_compile.config import load_config
 from safe_pip_compile.core import run_safe_compile
 from safe_pip_compile.exceptions import (
@@ -177,6 +177,7 @@ def main(ctx, src_files, output_file, min_severity, allow_list,
             sys.exit(EXIT_ERROR)
 
     cache = None
+    pip_compile_cache = None
     if not no_cache and not no_cve:
         try:
             cache = VulnCache()
@@ -197,6 +198,21 @@ def main(ctx, src_files, output_file, min_severity, allow_list,
         except Exception as e:
             reporter.console.print(f"[yellow]Cache warning:[/] {e} (continuing without cache)")
             cache = None
+
+        # pip-compile result cache (30-minute TTL, same SQLite DB)
+        try:
+            pip_compile_cache = PipCompileCache()
+            pip_compile_cache.open()
+            if refresh_cache:
+                pip_compile_cache.clear()
+            else:
+                pip_compile_cache.purge_expired()
+        except Exception as e:
+            if verbose:
+                reporter.console.print(
+                    f"[yellow]pip-compile cache warning:[/] {e} (continuing without cache)"
+                )
+            pip_compile_cache = None
 
     # ── OSV preflight check ──────────────────────────────────────────────────
     # Test SSL cert + connectivity *before* running pip-compile so a bad cert
@@ -247,6 +263,7 @@ def main(ctx, src_files, output_file, min_severity, allow_list,
                     reporter=reporter,
                     skip_cve=no_cve,
                     cache=cache,
+                    pip_compile_cache=pip_compile_cache,
                     cert_path=cert,
                     source_display_paths=source_display_paths,
                 )
@@ -435,6 +452,11 @@ def main(ctx, src_files, output_file, min_severity, allow_list,
         for f in temp_files_to_cleanup:
             try:
                 os.remove(f)
+            except Exception:
+                pass
+        if pip_compile_cache is not None:
+            try:
+                pip_compile_cache.close()
             except Exception:
                 pass
 

@@ -24,6 +24,14 @@ class Reporter:
             f"\n[bold blue][Iteration {n}/{max_n}][/]"
         )
 
+    def report_pip_compile_cache_hit(self) -> None:
+        """Print a notice when the pip-compile result is served from local cache."""
+        self.console.print(
+            "[dim] ⚡ pip-compile cache hit — "
+            "reusing resolved packages (cached < 30 min ago, skipping resolver)"
+            "\n\tuse --no-cache to bypass[/]"
+        )
+
     def report_resolver_inputs(
         self, src_files: list[str], constraints_file: str | None = None
     ) -> None:

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import sqlite3
@@ -12,6 +13,7 @@ from safe_pip_compile.models import Severity, Vulnerability
 
 SCHEMA_VERSION = 1
 DEFAULT_TTL_SECONDS = 6 * 30 * 24 * 3600  # ~6 months
+PIP_COMPILE_CACHE_TTL = 30 * 60  # 30 minutes
 
 
 def get_cache_dir() -> str:
@@ -250,3 +252,141 @@ class VulnCache:
         ).fetchone()[0]
 
         return {"packages": pkg_count, "vulnerabilities": vuln_count}
+
+
+class PipCompileCache:
+    """Short-lived cache (30 min TTL) for pip-compile resolved package lists.
+
+    Cache key: SHA-256 of sorted input file (name+content) concatenated with
+    the full Python version string (major.minor.micro), e.g. '3.11.12'.
+    Stored in the same SQLite DB as VulnCache, in a separate table.
+    """
+
+    def __init__(
+        self,
+        db_path: Optional[str] = None,
+        ttl_seconds: int = PIP_COMPILE_CACHE_TTL,
+    ):
+        self._db_path = db_path or get_cache_db_path()
+        self._ttl = ttl_seconds
+        self._conn: Optional[sqlite3.Connection] = None
+
+    def open(self):
+        os.makedirs(os.path.dirname(self._db_path), exist_ok=True)
+        self._conn = sqlite3.connect(self._db_path, timeout=5)
+        self._conn.execute("PRAGMA journal_mode=WAL")
+        self._conn.execute("PRAGMA synchronous=NORMAL")
+        self._init_schema()
+        return self
+
+    def close(self):
+        if self._conn:
+            self._conn.close()
+            self._conn = None
+
+    def __enter__(self):
+        self.open()
+        return self
+
+    def __exit__(self, *args):
+        self.close()
+
+    def _init_schema(self):
+        self._conn.execute("""
+            CREATE TABLE IF NOT EXISTS pip_compile_cache (
+                cache_key  TEXT PRIMARY KEY,
+                packages   TEXT NOT NULL,
+                cached_at  REAL NOT NULL
+            )
+        """)
+        self._conn.execute("""
+            CREATE INDEX IF NOT EXISTS idx_pip_compile_cached_at
+            ON pip_compile_cache(cached_at)
+        """)
+        self._conn.commit()
+
+    @staticmethod
+    def compute_key(src_files: list[str], python_version: str) -> str:
+        """Compute a deterministic SHA-256 cache key.
+
+        The key is derived from:
+          - Each source file's **basename** + its full content, sorted by basename
+            so that file order on the command line doesn't matter.
+          - The full Python version string, e.g. '3.11.12'.
+
+        Args:
+            src_files: Paths to the input requirement files.
+            python_version: Full Python version, e.g. '3.11.12'.
+
+        Returns:
+            A 64-character hex digest string.
+        """
+        parts: list[str] = []
+        for path in sorted(src_files, key=lambda p: os.path.basename(p)):
+            basename = os.path.basename(path)
+            try:
+                with open(path, encoding="utf-8") as fh:
+                    content = fh.read()
+            except OSError:
+                content = ""
+            parts.append(f"{basename}:{content}")
+        parts.append(f"python:{python_version}")
+        raw = "\n".join(parts).encode("utf-8")
+        return hashlib.sha256(raw).hexdigest()
+
+    def lookup(self, cache_key: str) -> Optional[list[str]]:
+        """Return cached package list on hit, or None on miss/expiry.
+
+        Returns:
+            A list of 'name==version' strings, or None if not cached / expired.
+        """
+        if not self._conn:
+            return None
+
+        cutoff = time.time() - self._ttl
+        row = self._conn.execute(
+            "SELECT packages, cached_at FROM pip_compile_cache WHERE cache_key = ?",
+            (cache_key,),
+        ).fetchone()
+
+        if not row or row[1] < cutoff:
+            return None
+
+        return json.loads(row[0])
+
+    def store(self, cache_key: str, packages: list[str]) -> None:
+        """Persist a resolved package list under the given key.
+
+        Args:
+            cache_key: The SHA-256 hex digest produced by :meth:`compute_key`.
+            packages: List of 'name==version' strings.
+        """
+        if not self._conn:
+            return
+
+        now = time.time()
+        self._conn.execute(
+            "INSERT OR REPLACE INTO pip_compile_cache "
+            "(cache_key, packages, cached_at) VALUES (?, ?, ?)",
+            (cache_key, json.dumps(packages), now),
+        )
+        self._conn.commit()
+
+    def purge_expired(self) -> None:
+        """Delete entries older than the TTL."""
+        if not self._conn:
+            return
+
+        cutoff = time.time() - self._ttl
+        self._conn.execute(
+            "DELETE FROM pip_compile_cache WHERE cached_at < ?", (cutoff,)
+        )
+        self._conn.commit()
+
+    def clear(self) -> None:
+        """Wipe all pip-compile cache entries."""
+        if not self._conn:
+            return
+
+        self._conn.execute("DELETE FROM pip_compile_cache")
+        self._conn.commit()

@@ -81,7 +81,8 @@ resolver in charge instead of hand-editing pinned output.
 | `--json-report PATH` | Write a machine-readable JSON vulnerability report | none |
 | `--cert PATH` | CA bundle for SSL verification behind corporate proxies | auto-detect from env |
 | `--no-cache` | Disable the local CVE cache and always query OSV.dev | cache enabled |
-| `--refresh-cache` | Clear cached data and re-fetch from OSV.dev | off |
+| `--refresh-cache` | Clear cached CVE data and re-fetch from OSV.dev, then run normally | off |
+| `--clear-cache` | Delete the entire cache directory and exit (useful before uninstalling) | off |
 | `-v, --verbose` | Increase output detail. Use `-v` or `-vv` | quiet |
 
 All other flags after `--` are passed through to `pip-compile`.
@@ -121,6 +122,9 @@ Bypass or refresh the local cache:
 ```bash
 safe-pip-compile requirements.in --no-cache
 safe-pip-compile requirements.in --refresh-cache
+
+# Wipe the entire cache directory (e.g. before uninstalling)
+safe-pip-compile --clear-cache
 ```
 
 ## Allowlist format
@@ -210,6 +214,7 @@ safe-pip-compile requirements.in --cert /etc/ssl/certs/corp-ca.pem
 # Cache
 safe-pip-compile requirements.in --no-cache
 safe-pip-compile requirements.in --refresh-cache
+safe-pip-compile --clear-cache     # delete cache directory and exit
 
 # Verbosity
 safe-pip-compile requirements.in -v    # verbose
@@ -244,8 +249,22 @@ Cache behavior:
 - Fixed vulnerabilities are cached for 6 months.
 - Vulnerabilities without a fix are not cached permanently, so a newly published
   fix can be picked up on a later run.
+- **pip-compile results** are also cached for 30 minutes. If the input files and
+  Python version haven't changed, the resolver is skipped entirely and CVE
+  scanning starts immediately — saving 30-120 s on complex dependency sets.
 - The cache is stored per user and works across virtual environments.
 - SQLite WAL mode allows concurrent readers.
+
+### Cache management
+
+| Flag | What it does |
+| --- | --- |
+| `--no-cache` | Disables both the CVE cache and the pip-compile result cache for this run |
+| `--refresh-cache` | SQL `DELETE` all cached rows, then runs normally and refills the cache |
+| `--clear-cache` | Deletes the entire cache directory from disk (`shutil.rmtree`) and exits — useful before uninstalling |
+
+> **Tip:** run `safe-pip-compile --clear-cache` before `pip uninstall safe-pip-compile`
+> to remove the leftover `cache.db` file from your user profile.
 
 ## Corporate proxy and SSL
 

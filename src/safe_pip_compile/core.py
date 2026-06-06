@@ -7,7 +7,7 @@ import tempfile
 from typing import TYPE_CHECKING
 
 from safe_pip_compile.allowlist import filter_allowed
-from safe_pip_compile.cache import VulnCache, get_cache_dir
+from safe_pip_compile.cache import PipCompileCache, VulnCache, get_cache_dir
 from safe_pip_compile.cached_client import CachedOSVClient
 from safe_pip_compile.constraints import generate_constraints, merge_constraints
 from safe_pip_compile.exceptions import (
@@ -25,7 +25,7 @@ from safe_pip_compile.models import (
     Vulnerability,
 )
 from safe_pip_compile.osv_client import OSVClient
-from safe_pip_compile.parser import parse_requirements
+from safe_pip_compile.parser import parse_requirements, parse_requirements_from_strings
 from safe_pip_compile.pip_compile import run_pip_compile
 
 if TYPE_CHECKING:
@@ -41,8 +41,10 @@ def run_safe_compile(
     max_iterations: int,
     dry_run: bool,
     reporter: Reporter,
+    skip_cve: bool = False,
     osv_client: OSVClient | None = None,
     cache: VulnCache | None = None,
+    pip_compile_cache: PipCompileCache | None = None,
     cert_path: str | None = None,
     source_display_paths: list[str] | None = None,
 ) -> CompileResult:
@@ -50,6 +52,16 @@ def run_safe_compile(
     all_iterations: list[IterationResult] = []
     all_vulns: list[Vulnerability] = []
     seen_pkg_versions: set[tuple[str, str]] = set()
+
+    # Compute the pip-compile cache key once (uses the full Python version string).
+    py = sys.version_info
+    _py_version_str = f"{py.major}.{py.minor}.{py.micro}"
+    _pip_cache_key: str | None = None
+    if pip_compile_cache and not _has_temporary_source(src_files):
+        try:
+            _pip_cache_key = PipCompileCache.compute_key(src_files, _py_version_str)
+        except Exception:
+            _pip_cache_key = None
 
     cache_dir = get_cache_dir()
     constraints_fd, constraints_path = tempfile.mkstemp(
@@ -81,53 +93,102 @@ def run_safe_compile(
             if constraints_file_arg or _has_temporary_source(src_files):
                 reporter.report_resolver_inputs(src_files, constraints_file_arg)
 
-            from contextlib import nullcontext
-            console = getattr(reporter, "console", None)
-            status_ctx = (
-                console.status("[bold white]Resolving dependencies...", spinner="dots")
-                if console is not None
-                else nullcontext()
-            )
-            with status_ctx:
-                pip_result = run_pip_compile(
-                    src_files=src_files,
-                    output_file=output_file if not dry_run else None,
-                    extra_args=passthrough_args,
-                    constraints_file=constraints_file_arg,
+            # ── pip-compile cache check ──────────────────────────────────────
+            # Only applicable on the very first iteration when no extra
+            # constraints have been accumulated yet (later iterations depend
+            # on additional constraints that alter the resolved output).
+            _from_cache = False
+            if _pip_cache_key and iteration == 1 and not accumulated_constraints:
+                cached_pkgs = pip_compile_cache.lookup(_pip_cache_key)
+                if cached_pkgs is not None:
+                    reporter.report_pip_compile_cache_hit()
+                    packages = parse_requirements_from_strings(cached_pkgs)
+                    iter_result.packages = packages
+                    reporter.report_packages(packages)
+                    _from_cache = True
+
+            if not _from_cache:
+                from contextlib import nullcontext
+                console = getattr(reporter, "console", None)
+                status_ctx = (
+                    console.status("[bold white]Resolving dependencies...", spinner="dots")
+                    if console is not None
+                    else nullcontext()
                 )
-
-            if pip_result.failed:
-                iter_result.pip_compile_succeeded = False
-                all_iterations.append(iter_result)
-
-                if iteration == 1:
-                    raise PipCompileError(
-                        "Initial pip-compile failed",
-                        returncode=pip_result.returncode,
-                        stderr=pip_result.stderr,
+                with status_ctx:
+                    pip_result = run_pip_compile(
+                        src_files=src_files,
+                        output_file=output_file if not dry_run else None,
+                        extra_args=passthrough_args,
+                        constraints_file=constraints_file_arg,
                     )
+
+                if pip_result.failed:
+                    iter_result.pip_compile_succeeded = False
+                    all_iterations.append(iter_result)
+
+                    if iteration == 1:
+                        raise PipCompileError(
+                            "Initial pip-compile failed",
+                            returncode=pip_result.returncode,
+                            stderr=pip_result.stderr,
+                        )
+                    else:
+                        raise UnsolvableConstraintsError(
+                            constraints=accumulated_constraints,
+                            pip_stderr=pip_result.stderr,
+                        )
+
+                if not dry_run:
+                    _sanitize_compile_output(
+                        output_file=output_file,
+                        constraints_path=constraints_path,
+                        src_files=src_files,
+                        source_display_paths=source_display_paths,
+                    )
+
+            # --no-cve: skip OSV scanning entirely and return after the first
+            # successful pip-compile pass.
+            if skip_cve:
+                if _from_cache:
+                    # packages already set from cache above
+                    pass
                 else:
-                    raise UnsolvableConstraintsError(
-                        constraints=accumulated_constraints,
-                        pip_stderr=pip_result.stderr,
+                    packages = parse_requirements(
+                        output_file if not dry_run else _get_dry_run_output(pip_result, src_files)
                     )
-
-            if not dry_run:
-                _sanitize_compile_output(
-                    output_file=output_file,
-                    constraints_path=constraints_path,
-                    src_files=src_files,
-                    source_display_paths=source_display_paths,
+                    iter_result.packages = packages
+                    reporter.report_packages(packages)
+                reporter.console.print(
+                    "[dim]CVE scanning skipped (--no-cve)[/]"
+                )
+                all_iterations.append(iter_result)
+                return CompileResult(
+                    status=CompileStatus.CLEAN,
+                    iterations=all_iterations,
+                    final_packages=packages,
+                    all_vulns_found=[],
                 )
 
-            if dry_run and iteration == 1:
-                output_for_parsing = _get_dry_run_output(pip_result, src_files)
-            else:
-                output_for_parsing = output_file
+            if not _from_cache:
+                if dry_run and iteration == 1:
+                    output_for_parsing = _get_dry_run_output(pip_result, src_files)
+                else:
+                    output_for_parsing = output_file
 
-            packages = parse_requirements(output_for_parsing)
-            iter_result.packages = packages
-            reporter.report_packages(packages)
+                packages = parse_requirements(output_for_parsing)
+                iter_result.packages = packages
+                reporter.report_packages(packages)
+
+                # ── Store in pip-compile cache after first successful run ────
+                if _pip_cache_key and iteration == 1 and not accumulated_constraints:
+                    try:
+                        pip_compile_cache.store(
+                            _pip_cache_key,
+                            [f"{pkg.name}=={pkg.version}" for pkg in packages],
+                        )
+                    except Exception:
+                        pass  # Cache failure is non-fatal
 
             current_pkg_versions = {
                 (pkg.normalized_name, pkg.version) for pkg in packages

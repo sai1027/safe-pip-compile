@@ -72,6 +72,9 @@ EXIT_ERROR = 3
               help="Disable local CVE cache, always query OSV.dev")
 @click.option("--refresh-cache", is_flag=True,
               help="Ignore cached data and re-fetch, then update cache")
+@click.option("--clear-cache", is_flag=True,
+              help="Delete the entire local cache directory and exit. "
+                   "Useful before uninstalling to remove leftover DB files.")
 @click.option("--cert", type=click.Path(exists=True), default=None,
               help="Path to CA bundle for SSL verification (corporate proxies). "
                    "Also reads SSL_CERT_FILE / REQUESTS_CA_BUNDLE env vars.")
@@ -82,7 +85,7 @@ EXIT_ERROR = 3
 @click.pass_context
 def main(ctx, src_files, output_file, min_severity, allow_list,
          max_iterations, strict, dry_run, json_report, no_cache,
-         refresh_cache, cert, no_cve, verbose):
+         refresh_cache, clear_cache, cert, no_cve, verbose):
     """CVE-aware pip-compile wrapper.
 
     Wraps pip-compile and iteratively resolves dependencies while avoiding
@@ -101,6 +104,22 @@ def main(ctx, src_files, output_file, min_severity, allow_list,
     # Build a temporary reporter using the raw CLI verbosity so we can print
     # errors during the argument-parsing phase (before config is loaded).
     early_reporter = Reporter(verbosity=verbose)
+
+    # ── --clear-cache: wipe the entire cache directory and exit ─────────────
+    if clear_cache:
+        import shutil
+        cache_dir = get_cache_dir()
+        if os.path.exists(cache_dir):
+            shutil.rmtree(cache_dir)
+            early_reporter.console.print(
+                f"[green]Cache directory deleted:[/] {cache_dir}"
+            )
+        else:
+            early_reporter.console.print(
+                f"[dim]Cache directory does not exist (nothing to delete):[/] {cache_dir}"
+            )
+        sys.exit(EXIT_CLEAN)
+    # ────────────────────────────────────────────────────────────────────────
 
     # Separate src_files positional args into real paths vs pip-compile flags.
     # Click cannot tell these apart when ignore_unknown_options=True, so we do it here.

@@ -4,9 +4,55 @@ from datetime import date
 from typing import Optional
 
 import yaml
+from packaging.specifiers import InvalidSpecifier, SpecifierSet
 
 from safe_pip_compile.exceptions import AllowlistError
-from safe_pip_compile.models import AllowlistEntry, Vulnerability
+from safe_pip_compile.models import AllowlistEntry, Severity, Vulnerability
+
+
+def _parse_expires(raw, entry_index: int) -> Optional[date]:
+    """Parse an `expires` value (date object or ISO-8601 string) into a date."""
+    if not raw:
+        return None
+    if isinstance(raw, date):
+        return raw
+    if isinstance(raw, str):
+        try:
+            return date.fromisoformat(raw)
+        except ValueError:
+            raise AllowlistError(
+                f"Entry {entry_index} has invalid 'expires' date: {raw}. "
+                f"Use YYYY-MM-DD format."
+            )
+    raise AllowlistError(
+        f"Entry {entry_index} has unsupported 'expires' type: {type(raw).__name__}"
+    )
+
+
+def _parse_versions(raw, entry_index: int) -> tuple[str, ...]:
+    """Parse and validate the `versions` list of PEP 440 specifier strings."""
+    if not raw:
+        return ()
+    if not isinstance(raw, list):
+        raise AllowlistError(
+            f"Entry {entry_index} 'versions' must be a list of version specifier "
+            f"strings, e.g. [\">=2.0\", \"<3.0\"]"
+        )
+    specs: list[str] = []
+    for spec_str in raw:
+        if not isinstance(spec_str, str):
+            raise AllowlistError(
+                f"Entry {entry_index} 'versions' contains a non-string value: {spec_str!r}"
+            )
+        try:
+            SpecifierSet(spec_str)  # validate early
+        except InvalidSpecifier:
+            raise AllowlistError(
+                f"Entry {entry_index} has invalid version specifier: {spec_str!r}. "
+                f"Use PEP 440 format, e.g. \">=2.0\", \"==1.5.3\", \"<3.0\"."
+            )
+        specs.append(spec_str)
+    return tuple(specs)
 
 
 def load_allowlist(filepath: str) -> list[AllowlistEntry]:
@@ -28,29 +74,42 @@ def load_allowlist(filepath: str) -> list[AllowlistEntry]:
     entries: list[AllowlistEntry] = []
     for i, item in enumerate(entries_data):
         if not isinstance(item, dict):
-            raise AllowlistError(f"Entry {i} must be a mapping with at least 'id' key")
+            raise AllowlistError(f"Entry {i} must be a mapping with at least 'id' or 'package' key")
 
-        cve_id = item.get("id")
-        if not cve_id:
-            raise AllowlistError(f"Entry {i} missing required 'id' field")
+        cve_id = str(item["id"]) if item.get("id") else ""
+        package = str(item["package"]).strip() if item.get("package") else ""
 
+        if not cve_id and not package:
+            raise AllowlistError(
+                f"Entry {i} must have at least one of 'id' (CVE/GHSA identifier) "
+                f"or 'package' (library name)"
+            )
+
+        versions = _parse_versions(item.get("versions"), i)
+        expires = _parse_expires(item.get("expires"), i)
         reason = item.get("reason", "")
-        expires_raw = item.get("expires")
-        expires: Optional[date] = None
 
-        if expires_raw:
-            if isinstance(expires_raw, date):
-                expires = expires_raw
-            elif isinstance(expires_raw, str):
-                try:
-                    expires = date.fromisoformat(expires_raw)
-                except ValueError:
-                    raise AllowlistError(
-                        f"Entry {i} has invalid 'expires' date: {expires_raw}. "
-                        f"Use YYYY-MM-DD format."
-                    )
+        # Parse optional per-package severity cap
+        severity_raw = item.get("severity")
+        severity: Optional[Severity] = None
+        if severity_raw is not None:
+            severity = Severity.from_string(str(severity_raw))
+            if severity == Severity.UNKNOWN:
+                raise AllowlistError(
+                    f"Entry {i} has unrecognised 'severity' value: {severity_raw!r}. "
+                    f"Use one of: low, medium, high, critical."
+                )
 
-        entries.append(AllowlistEntry(id=str(cve_id), reason=reason, expires=expires))
+        entries.append(
+            AllowlistEntry(
+                id=cve_id,
+                package=package,
+                versions=versions,
+                severity=severity,
+                reason=reason,
+                expires=expires,
+            )
+        )
 
     return entries
 
@@ -60,11 +119,34 @@ def is_allowed(
     allowlist: list[AllowlistEntry],
     today: Optional[date] = None,
 ) -> bool:
+    """Return True if *vuln* is suppressed by any entry in *allowlist*.
+
+    Matching priority:
+    1. CVE-id match (entry.id matches vuln's ID or an alias) — always suppresses
+       regardless of severity, provided the entry has not expired.
+    2. Package-based match (entry.package matches vuln.affected_package) — suppresses
+       when version specifiers and per-package severity cap also match.
+    """
     vuln_ids = {vuln.id} | set(vuln.aliases)
 
     for entry in allowlist:
-        if entry.id in vuln_ids:
-            if not entry.is_expired(today):
+        if entry.is_expired(today):
+            continue
+
+        # --- Priority 1: CVE-id match ---
+        if entry.id and entry.id in vuln_ids:
+            return True
+
+        # --- Priority 2: package-based match ---
+        if entry.package and vuln.affected_package:
+            if entry.matches_package(vuln.affected_package, vuln.affected_version):
+                # Apply per-package severity cap if set.
+                # "suppress at or below this severity" — same logic as --min-severity
+                # but inverted: we suppress when vuln severity is <= cap.
+                if entry.severity is not None:
+                    # UNKNOWN severity is treated as always suppressed (mirrors meets_threshold)
+                    if vuln.severity != Severity.UNKNOWN and vuln.severity.value > entry.severity.value:
+                        continue  # above the cap → not suppressed by this entry
                 return True
 
     return False

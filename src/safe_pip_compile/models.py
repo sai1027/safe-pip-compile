@@ -4,6 +4,8 @@ from datetime import date
 from enum import Enum
 from typing import Optional
 
+from packaging.specifiers import InvalidSpecifier, SpecifierSet
+
 
 class Severity(Enum):
     CRITICAL = 4
@@ -66,7 +68,26 @@ class Vulnerability:
 
 @dataclass(frozen=True)
 class AllowlistEntry:
-    id: str
+    """A single entry in the CVE allowlist.
+
+    An entry must have at least one of `id` or `package`.
+
+    - `id`       : suppress a specific CVE/GHSA by its ID or alias.
+    - `package`  : suppress CVEs by library name, with optional version specifiers
+                   and a per-package severity cap.
+
+    When both `id` and `package` are set, the CVE-id match is tried first (and
+    always wins), then the package-based match is tried as a fallback.
+    """
+
+    # CVE / GHSA identifier (optional when `package` is set)
+    id: str = ""
+    # Library name (optional when `id` is set)
+    package: str = ""
+    # PEP 440 version specifiers, e.g. (">=2.0", "<3.0"). Empty = all versions.
+    versions: tuple[str, ...] = ()
+    # Severity cap: suppress CVEs at or below this level. None = suppress all.
+    severity: Optional["Severity"] = None
     reason: str = ""
     expires: Optional[date] = None
 
@@ -74,6 +95,34 @@ class AllowlistEntry:
         if self.expires is None:
             return False
         return (today or date.today()) > self.expires
+
+    def matches_package(self, pkg_name: str, pkg_version: str) -> bool:
+        """Return True if this package-based entry applies to the given package/version.
+
+        Checks:
+        1. Package name matches (PEP 503 normalised: lowercase, - and _ equivalent).
+        2. Version satisfies all specifiers in `versions` (empty = wildcard).
+        3. Does NOT check severity or expiry — callers handle those separately.
+        """
+        if not self.package:
+            return False
+
+        def _norm(name: str) -> str:
+            return name.lower().replace("_", "-")
+
+        if _norm(self.package) != _norm(pkg_name):
+            return False
+
+        if self.versions:
+            try:
+                spec = SpecifierSet(",".join(self.versions))
+                if not spec.contains(pkg_version, prereleases=True):
+                    return False
+            except InvalidSpecifier:
+                # Invalid specifiers are rejected at load time; this is a safety fallback.
+                return False
+
+        return True
 
 
 @dataclass(frozen=True)

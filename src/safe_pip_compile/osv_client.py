@@ -71,6 +71,39 @@ class OSVClient:
     def close(self):
         self._client.close()
 
+    def preflight_check(self) -> None:
+        """Verify SSL cert and network connectivity to OSV.dev before doing real work.
+
+        Sends a cheap HEAD request (falls back to GET if HEAD is rejected) with a
+        short 10-second timeout so the caller gets an immediate, clear error rather
+        than discovering the problem after a slow pip-compile run.
+
+        Raises:
+            OSVNetworkError: if the host is unreachable or the SSL handshake fails.
+            OSVAPIError: if the server returns an unexpected HTTP error status.
+        """
+        import httpx
+
+        url = f"{self.BASE_URL}/v1/"
+        try:
+            resp = self._client.head(url, timeout=10.0)
+            # HEAD returns 405 on some proxies/servers — fall back to GET in that case.
+            if resp.status_code == 405:
+                resp = self._client.get(url, timeout=10.0)
+        except httpx.ConnectError as e:
+            raise OSVNetworkError(
+                f"Cannot reach OSV.dev — check your network or --cert setting: {e}"
+            ) from e
+        except httpx.TimeoutException as e:
+            raise OSVNetworkError(
+                f"OSV.dev connectivity check timed out (10 s): {e}"
+            ) from e
+
+        # 4xx/5xx other than 404 (which api.osv.dev returns for unknown paths) signal
+        # a real problem (e.g. auth proxy blocking the connection).
+        if resp.status_code not in (200, 204, 404):
+            raise OSVAPIError(resp.status_code, resp.text)
+
     def __enter__(self):
         return self
 

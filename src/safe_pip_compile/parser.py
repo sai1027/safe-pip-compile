@@ -79,3 +79,23 @@ def _parse_line(line: str) -> ResolvedPackage | None:
     name = req.name.lower().replace("_", "-")
     extras = tuple(sorted(req.extras)) if req.extras else ()
     return ResolvedPackage(name=name, version=version, extras=extras)
+
+
+def parse_requirements_from_strings(lines: list[str]) -> list[ResolvedPackage]:
+    """Build ResolvedPackage objects from a list of 'name==version' strings.
+
+    Used to hydrate a pip-compile cache hit without reading from disk.
+    Lines that cannot be parsed are silently skipped.
+
+    Args:
+        lines: Strings like ``['requests==2.31.0', 'urllib3==2.0.7']``.
+
+    Returns:
+        A list of :class:`ResolvedPackage` objects.
+    """
+    packages: list[ResolvedPackage] = []
+    for line in lines:
+        pkg = _parse_line(line.strip())
+        if pkg:
+            packages.append(pkg)
+    return packages

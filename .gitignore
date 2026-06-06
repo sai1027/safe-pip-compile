@@ -19,3 +19,6 @@ build/
 
 TODO.txt
 task.txt
+
+# MkDocs built site (deployed via GitHub Actions, not committed)
+site/

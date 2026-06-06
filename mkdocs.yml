@@ -1,0 +1,89 @@
+site_name: safe-pip-compile
+site_description: pip-compile wrapper with CVE awareness — pin dependencies safely.
+site_url: https://sai1027.github.io/safe-pip-compile/
+repo_url: https://github.com/sai1027/safe-pip-compile
+repo_name: sai1027/safe-pip-compile
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: teal
+      accent: cyan
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: teal
+      accent: cyan
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+  font:
+    text: Inter
+    code: JetBrains Mono
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.highlight
+    - search.suggest
+    - content.code.copy
+    - content.code.annotate
+    - content.action.edit
+  icon:
+    repo: fontawesome/brands/github
+
+nav:
+  - Home: index.md
+  - Getting Started:
+    - Installation: installation.md
+    - Quick Start: quickstart.md
+  - Usage:
+    - CLI Reference: cli.md
+    - Configuration: configuration.md
+    - CVE Allowlist: allowlist.md
+  - Internals:
+    - How It Works: how-it-works.md
+    - Local CVE Cache: cache.md
+    - Corporate Proxy & SSL: proxy.md
+  - Reference:
+    - Exit Codes: exit-codes.md
+    - Changelog: changelog.md
+
+plugins:
+  - search
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.tabbed:
+      alternate_style: true
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/sai1027/safe-pip-compile
+    - icon: fontawesome/brands/python
+      link: https://pypi.org/project/safe-pip-compile/
+    - icon: fontawesome/brands/linkedin
+      link: https://www.linkedin.com/in/venkatasaiteja/
+  generator: false
+
+copyright: "Copyright &copy; 2026 N Venkata Sai Teja — MIT License"

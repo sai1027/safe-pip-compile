@@ -3,6 +3,7 @@
 [![PyPI](https://img.shields.io/pypi/v/safe-pip-compile?color=0f766e&label=PyPI)](https://pypi.org/project/safe-pip-compile/)
 [![Python](https://img.shields.io/pypi/pyversions/safe-pip-compile?color=2563eb)](https://pypi.org/project/safe-pip-compile/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-111827.svg)](LICENSE)
+[![Documentation](https://img.shields.io/badge/Documentation-ReadtheDocs-blue.svg)](https://sai1027.github.io/safe-pip-compile/)
 
 `safe-pip-compile` is a drop-in `pip-compile` wrapper that avoids pinning Python
 packages with known CVEs.
@@ -27,7 +28,9 @@ clean or the configured limit is reached.
 pip install safe-pip-compile
 ```
 
-Project page: <https://pypi.org/project/safe-pip-compile/>
+[Project page](https://pypi.org/project/safe-pip-compile/)
+
+[Documentation](https://sai1027.github.io/safe-pip-compile/)
 
 ## Quick start
 

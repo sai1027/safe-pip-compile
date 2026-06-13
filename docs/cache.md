@@ -1,6 +1,51 @@
-# Local CVE Cache
+# Cache Management
 
-`safe-pip-compile` maintains a local SQLite database to avoid repeating OSV.dev API calls on every run. The cache covers both vulnerability data and `pip-compile` resolution results.
+`safe-pip-compile` maintains a local SQLite database to avoid repeating OSV.dev API calls on every run. The cache covers both CVE vulnerability data and `pip-compile` resolution results.
+
+---
+
+## --no-cache
+
+Disables both the CVE cache and the pip-compile result cache for this single run. All CVE data is fetched live from OSV.dev and `pip-compile` is always called.
+
+```bash
+# Bypass cache — always fetch fresh data
+safe-pip-compile requirements.in --no-cache
+
+# No-cache with verbose output to see every OSV query
+safe-pip-compile requirements.in --no-cache -v
+```
+
+**Use case:** When you suspect stale cache data, or when auditing a dependency tree for the first time and want guaranteed fresh results.
+
+---
+
+## --refresh-cache
+
+Clears all existing cached rows from the database, then runs normally — refilling the cache from scratch with fresh data from OSV.dev.
+
+```bash
+# Wipe stale cache entries and re-fetch everything
+safe-pip-compile requirements.in --refresh-cache
+
+# Refresh cache with a report
+safe-pip-compile requirements.in --refresh-cache --json-report audit.json
+```
+
+**Difference from `--no-cache`:** `--refresh-cache` permanently clears the cache and refills it during the run. `--no-cache` only skips the cache for one run without deleting anything.
+
+---
+
+## --clear-cache
+
+Deletes the entire cache directory from disk and exits immediately. No compilation or audit is run.
+
+```bash
+safe-pip-compile --clear-cache
+```
+
+!!! tip "Before uninstalling"
+    Run `safe-pip-compile --clear-cache` before `pip uninstall safe-pip-compile` to remove the leftover `cache.db` file from your user profile.
 
 ---
 
@@ -12,51 +57,27 @@
 | macOS | `~/Library/Caches/safe-pip-compile/cache.db` |
 | Windows | `%LOCALAPPDATA%\safe-pip-compile\Cache\cache.db` |
 
-The path is determined by the [`platformdirs`](https://pypi.org/project/platformdirs/) library and is per-user, so it works across virtual environments.
+The path is per-user, shared across all your virtual environments.
 
 ---
 
 ## What is cached?
 
-### CVE data
-- **Resolved vulnerabilities** (package has a known fix): cached for **6 months**
-- **Unfixed vulnerabilities** (no fix available yet): **not cached permanently** — re-fetched on the next run so a newly published fix is picked up automatically
+**CVE data:**
 
-### pip-compile results
+- Resolved vulnerabilities (package has a known fix): cached for **6 months**
+- Unfixed vulnerabilities (no fix yet): not cached — re-fetched on the next run so newly published fixes are picked up automatically
+
+**pip-compile results:**
+
 - The full resolved dependency set for a given set of input files is cached for **30 minutes**
 - The cache key includes the content of all input files and the Python version
-- If inputs haven't changed within the window, `pip-compile` is skipped entirely and CVE scanning starts immediately — saving **30–120 seconds** on complex dependency sets
-
----
-
-## Cache management flags
-
-| Flag | What it does |
-|------|-------------|
-| `--no-cache` | Disables **both** the CVE cache and the pip-compile result cache for this run. All data is fetched live from OSV.dev. |
-| `--refresh-cache` | Deletes all cached rows with a SQL `DELETE`, then runs normally and refills the cache from scratch. |
-| `--clear-cache` | Deletes the entire cache **directory** from disk (`shutil.rmtree`) and exits immediately. Useful before uninstalling. |
-
-```bash
-# Skip the cache for this run only
-safe-pip-compile requirements.in --no-cache
-
-# Wipe stale entries and re-fetch
-safe-pip-compile requirements.in --refresh-cache
-
-# Remove the cache directory entirely
-safe-pip-compile --clear-cache
-```
+- If inputs haven't changed within the window, `pip-compile` is skipped entirely — saving **30–120 seconds** on complex dependency sets
 
 ---
 
 ## Technical details
 
 - **SQLite WAL mode** — allows multiple concurrent readers without locking
-- Cache is stored per-user, not per-virtualenv — shared across all your projects
+- Cache is per-user, not per-virtualenv — shared across all your projects
 - The database is created automatically on first use; no setup required
-
----
-
-!!! tip "Before uninstalling"
-    Run `safe-pip-compile --clear-cache` before `pip uninstall safe-pip-compile` to remove the leftover `cache.db` file from your user profile.

@@ -74,8 +74,47 @@ Exit code `1` is returned if unresolved CVEs remain, failing the CI job automati
 
 ---
 
+## Flag quick reference
+
+All flags at a glance — click any flag to go to its full documentation.
+
+### Core resolution
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| [`--min-severity`](cve-filtering.md#--min-severity) | `low` | Minimum CVE severity to block. One of: `critical`, `high`, `medium`, `low` |
+| [`--strict / --no-strict`](cve-filtering.md#--strict----no-strict) | `--strict` | Exit with code `1` if unresolved CVEs remain |
+| [`--no-cve`](cve-filtering.md#--no-cve) | off | Skip CVE checking — pure `pip-compile` pass-through |
+| [`--max-iterations`](cve-filtering.md#--max-iterations) | `10` | Maximum compile/audit loops before stopping |
+| [`--allow-list PATH`](allowlist.md#--allow-list) | *(none)* | Path to a YAML file of accepted CVEs to skip |
+
+### Output & reporting
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| [`-o, --output-file PATH`](output-reporting.md#--output-file---o) | `requirements.txt` | Path to write the compiled output |
+| [`--dry-run`](output-reporting.md#--dry-run) | off | Preview actions without writing any output files |
+| [`--json-report PATH`](output-reporting.md#--json-report) | *(none)* | Write a machine-readable JSON vulnerability report |
+| [`-v, --verbose`](output-reporting.md#--verbose---v) | quiet | Increase output detail (`-v` or `-vv`) |
+
+### Cache
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| [`--no-cache`](cache.md#--no-cache) | off | Bypass local cache — always query OSV.dev live |
+| [`--refresh-cache`](cache.md#--refresh-cache) | off | Clear all cached data and re-fetch from OSV.dev |
+| [`--clear-cache`](cache.md#--clear-cache) | off | Delete the entire cache directory and exit |
+
+### Network & SSL
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| [`--cert PATH`](network-ssl.md#--cert) | *(auto)* | CA bundle for SSL verification (corporate proxies) |
+
+---
+
 ## Next steps
 
-- [CLI Reference](cli.md) — all available flags
-- [Configuration](configuration.md) — set defaults in `pyproject.toml`
-- [CVE Allowlist](allowlist.md) — accept specific known CVEs
+- [Configuration](configuration.md) — set project defaults in `pyproject.toml`
+- [CVE Allowlist](allowlist.md) — accept specific known CVEs with expiry dates
+- [Exit Codes](exit-codes.md) — integrate with CI pipelines

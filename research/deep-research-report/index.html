@@ -1,0 +1,1459 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="pip-compile wrapper with CVE awareness — pin dependencies safely.">
+      
+      
+      
+        <link rel="canonical" href="https://sai1027.github.io/safe-pip-compile/research/deep-research-report/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/logo.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Executive Summary - safe-pip-compile</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,700,700i%7CJetBrains+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="slate" data-md-color-primary="teal" data-md-color-accent="cyan">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#executive-summary" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="safe-pip-compile" class="md-header__button md-logo" aria-label="safe-pip-compile" data-md-component="logo">
+      
+  <img src="../../assets/logo.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            safe-pip-compile
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Executive Summary
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="teal" data-md-color-accent="cyan"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="cyan"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/sai1027/safe-pip-compile" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    sai1027/safe-pip-compile
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+    
+      
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../installation/" class="md-tabs__link">
+          
+  
+  
+  User Docs
+
+        </a>
+      </li>
+    
+  
+
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../how-it-works/" class="md-tabs__link">
+          
+  
+  
+  Contributor Docs
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../changelog/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Changelog
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+    
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="safe-pip-compile" class="md-nav__button md-logo" aria-label="safe-pip-compile" data-md-component="logo">
+      
+  <img src="../../assets/logo.png" alt="logo">
+
+    </a>
+    safe-pip-compile
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/sai1027/safe-pip-compile" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    sai1027/safe-pip-compile
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User Docs
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    User Docs
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_1" id="__nav_2_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick Start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_2" id="__nav_2_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Features
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Features
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cve-filtering/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CVE Filtering
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../allowlist/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CVE Allowlist
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../output-reporting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Output & Reporting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cache/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cache Management
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../network-ssl/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Network & SSL
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../exit-codes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Exit Codes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributor Docs
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Contributor Docs
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../how-it-works/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    How It Works
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../changelog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Changelog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#survey-of-existing-tools" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Survey of Existing Tools
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#discussions-and-proposals" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Discussions and Proposals
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#academic-and-industry-research" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Academic and Industry Research
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#technical-feasibility-and-challenges" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Technical Feasibility and Challenges
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#existing-workarounds-and-architectures" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Existing Workarounds and Architectures
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#demand-and-community-sentiment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Demand and Community Sentiment
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#recommendations-design-approaches" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Recommendations &amp; Design Approaches
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#diagram-integrated-resolver-flowchart" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Diagram: Integrated Resolver Flowchart
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Diagram: Integrated Resolver Flowchart">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#reference-links" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reference Links
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/sai1027/safe-pip-compile/edit/main/docs/research/deep-research-report.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="executive-summary">Executive Summary<a class="headerlink" href="#executive-summary" title="Permanent link">&para;</a></h1>
+<p>No mainstream Python installer currently <em>automatically</em> avoids known vulnerable packages. Tools like <code>pip</code>, Poetry, Pipenv, Conda, etc. resolve dependencies but have no built-in CVE filtering; security checks are done as a separate step. In practice, developers resolve or lock dependencies (with <code>pip-compile</code>, Pipenv/Poetry lockfiles, etc.) and <em>then</em> run vulnerability scanners (e.g. pip-audit, Safety, Dependabot) on the results. There is active interest in integrated CVE-aware resolution: for example, NexB and others have prototyped “non-vulnerable dependency resolution” (NVDR) by injecting vulnerability constraints into the resolver<a href="https://aboutcode.org/2023/non-vulnerable-dependency-resolution/" target="_blank">[10]</a>. Pip core developers have discussed adding vulnerability data to the PyPI API and pip, but caution that pip should not block installs by default<a href="https://discuss.python.org/t/supplying-vulnerability-based-constraints-to-the-resolution-process/23190" target="_blank">[3]</a><a href="https://discuss.python.org/t/draft-pep-adding-vulnerability-data-to-the-simple-api-for-package-indexes/22372" target="_blank">[30]</a>. No single widely-adopted library currently does both resolution and CVE filtering in one pass. (Instead, solutions rely on lockfiles, CI pipelines, and auxiliary tools.) Below we survey existing tools, discuss proposals and research, analyze technical issues, and outline recommended designs for a CVE-aware resolver.</p>
+<h2 id="survey-of-existing-tools">Survey of Existing Tools<a class="headerlink" href="#survey-of-existing-tools" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Tool/Service</th>
+<th style="text-align: center;">Dependency resolution</th>
+<th style="text-align: center;">Lockfile/Pinning</th>
+<th style="text-align: left;">CVE scanning</th>
+<th style="text-align: left;">Integrated CVE handling</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>pip</strong></td>
+<td style="text-align: center;">✅ (via resolvelib)</td>
+<td style="text-align: center;">No native lock, uses constraints</td>
+<td style="text-align: left;">No (separate pip-audit or pipenv check)</td>
+<td style="text-align: left;">No (proposal under discussion)</td>
+</tr>
+<tr>
+<td><strong>pip-tools</strong></td>
+<td style="text-align: center;">✅ (<code>pip-compile</code>)</td>
+<td style="text-align: center;">✅ (produces <code>requirements.txt</code>)</td>
+<td style="text-align: left;">No (use pip-audit afterward)</td>
+<td style="text-align: left;">No (resolves only, then scan)</td>
+</tr>
+<tr>
+<td><strong>pipdeptree</strong></td>
+<td style="text-align: center;">No (analysis only)</td>
+<td style="text-align: center;">–</td>
+<td style="text-align: left;">No (just prints tree)</td>
+<td style="text-align: left;">No</td>
+</tr>
+<tr>
+<td><strong>Poetry</strong></td>
+<td style="text-align: center;">✅ (custom solver)</td>
+<td style="text-align: center;">✅ (<code>poetry.lock</code>)</td>
+<td style="text-align: left;">No (plugins like <em>poetry-audit-plugin</em> call safety<a href="https://pypi.org/project/poetry-audit-plugin/" target="_blank">[25]</a>)</td>
+<td style="text-align: left;">No (plugin-based scan)</td>
+</tr>
+<tr>
+<td><strong>Pipenv</strong></td>
+<td style="text-align: center;">✅ (<code>Pipfile.lock</code>)</td>
+<td style="text-align: center;">✅ (<code>Pipfile.lock</code>)</td>
+<td style="text-align: left;">✅ (built-in <code>pipenv check</code> uses [Safety] DB<a href="https://docs.pipenv.org/advanced/" target="_blank">[27]</a>)</td>
+<td style="text-align: left;">No (scan is separate step)</td>
+</tr>
+<tr>
+<td><strong>Conda/Mamba</strong></td>
+<td style="text-align: center;">✅ (Conda solver)</td>
+<td style="text-align: center;">✅ (explicit pins)</td>
+<td style="text-align: left;">No (external scanning only)</td>
+<td style="text-align: left;">No</td>
+</tr>
+<tr>
+<td><strong>pipx</strong></td>
+<td style="text-align: center;">✅ (installs isolated env)</td>
+<td style="text-align: center;">No (only per-app venv)</td>
+<td style="text-align: left;">No</td>
+<td style="text-align: left;">No</td>
+</tr>
+<tr>
+<td><strong>PDM/Hatch</strong></td>
+<td style="text-align: center;">✅ (PEP 582 / pyproject)</td>
+<td style="text-align: center;">✅ (<code>pdm.lock</code>)</td>
+<td style="text-align: left;">No (some plugin support, e.g. <code>pdm-audit</code>)</td>
+<td style="text-align: left;">No (no built-in)</td>
+</tr>
+<tr>
+<td><strong>Thoth (AICoE)</strong></td>
+<td style="text-align: center;">✅ (cloud-based solver)</td>
+<td style="text-align: center;">–</td>
+<td style="text-align: left;">✅ (reports vulnerabilities)<a href="https://developers.redhat.com/articles/2022/03/07/manage-python-security-thoths-cloud-based-dependency-resolver" target="_blank">[36]</a></td>
+<td style="text-align: left;">Partially (advisor checks CVEs post-hoc)</td>
+</tr>
+<tr>
+<td><strong>OSV (Google)</strong></td>
+<td style="text-align: center;">– (database &amp; CLI)</td>
+<td style="text-align: center;">–</td>
+<td style="text-align: left;">✅ (scans lockfiles/environments)</td>
+<td style="text-align: left;">No (tool, not a resolver)</td>
+</tr>
+<tr>
+<td><strong>GitHub Dependabot</strong></td>
+<td style="text-align: center;">– (CI service)</td>
+<td style="text-align: center;">✅ (locks updates)</td>
+<td style="text-align: left;">✅ (uses GH Advisory DB)</td>
+<td style="text-align: left;">No (operates on lockfiles)</td>
+</tr>
+<tr>
+<td><strong>Snyk</strong></td>
+<td style="text-align: center;">– (service)</td>
+<td style="text-align: center;">–</td>
+<td style="text-align: left;">✅ (scans various ecosystems)</td>
+<td style="text-align: left;">No</td>
+</tr>
+<tr>
+<td><strong>Renovate</strong></td>
+<td style="text-align: center;">– (service)</td>
+<td style="text-align: center;">✅ (lock updates)</td>
+<td style="text-align: left;">✅ (uses GH and NVD)</td>
+<td style="text-align: left;">No (similar to Dependabot)</td>
+</tr>
+<tr>
+<td><strong>Safety (PyPI)</strong></td>
+<td style="text-align: center;">–</td>
+<td style="text-align: center;">–</td>
+<td style="text-align: left;">✅ (vulnerability scanner)</td>
+<td style="text-align: left;">No (scan-only)</td>
+</tr>
+<tr>
+<td><strong>pip-audit</strong></td>
+<td style="text-align: center;">–</td>
+<td style="text-align: center;">–</td>
+<td style="text-align: left;">✅ (uses PyPA Advisory DB / OSV)<a href="https://discuss.python.org/t/towards-a-pip-audit-subcommand-for-vulnerability-analysis-management/17681" target="_blank">[33]</a></td>
+<td style="text-align: left;">No (scan-only)</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li><strong>pip &amp; pip-tools</strong>: The core installer pip (10.2k⭐) resolves dependencies but has no awareness of CVEs. Pip-tools’ <code>pip-compile</code> (8k⭐) likewise creates pinned <code>requirements.txt</code> without checking vulnerabilities. Users then run separate tools (e.g. <code>pip-audit</code>) on the results. Pip’s maintainers have discussed vulnerability data (e.g. PEP draft<a href="https://discuss.python.org/t/draft-pep-adding-vulnerability-data-to-the-simple-api-for-package-indexes/22372" target="_blank">[30]</a>) but have not integrated any blocking behavior.</li>
+<li><strong>Pipenv / Poetry</strong>: Both produce lockfiles. Pipenv (25k⭐) includes Safety for scanning (<code>pipenv check</code>)<a href="https://docs.pipenv.org/advanced/" target="_blank">[27]</a>, though this is a separate “check” action. Poetry (34k⭐) has no built-in scan, but third-party plugins (e.g. <em>poetry-audit-plugin</em><a href="https://pypi.org/project/poetry-audit-plugin/" target="_blank">[25]</a>) call Safety to report CVEs. In all cases the dependency solver itself does not avoid vulnerable versions; scanning happens after resolution.</li>
+<li><strong>Conda/Mamba</strong>: Resolves both Python and native packages, with lock capabilities (explicit pinning). However, conda has no native vulnerability filtering; users rely on external SCA tools. (Conda-forge now publishes CVE info for its own packages, but pip-format CVEs are separate.)</li>
+<li><strong>Thoth (Project AICoE)</strong>: Thoth offers a <em>cloud-based</em> Python dependency solver. Its CLI <code>thamos</code> can “advise” on vulnerabilities, effectively acting like a resolver with post-hoc CVE knowledge<a href="https://developers.redhat.com/articles/2022/03/07/manage-python-security-thoths-cloud-based-dependency-resolver" target="_blank">[36]</a>. It’s a research/academic project that models resolution in multiple environments and reports known flaws, but it is not a drop-in replacement used by most Python users.</li>
+<li><strong>External scanners &amp; services</strong>: Tools like <code>pip-audit</code>, Safety, OSV-CLI, or CI services (GitHub Dependabot, Snyk, Renovate) all scan for known vulnerabilities <em>after</em> or outside of dependency resolution. For example, Dependabot regularly checks lockfiles and creates PRs to upgrade vulnerable packages. None of these changes the underlying resolver algorithm; they operate on static dependency graphs.</li>
+</ul>
+<p><strong>Adoption/metrics:</strong> Pip (the installer) sees billions of installs per year. Poetry has ~34k GitHub stars<a href="https://github.com/python-poetry/poetry" target="_blank">[53]</a> (recently very popular), Pipenv ~25k<a href="https://github.com/pypa/pipenv" target="_blank">[63]</a>, pip-tools ~8k<a href="https://github.com/jazzband/pip-tools" target="_blank">[59]</a>, pipdeptree ~3k<a href="https://github.com/tox-dev/pipdeptree" target="_blank">[61]</a>. CVE-scanning tools like pip-audit and Safety also have thousands of users, but no single CVE-aware resolver has similarly high adoption. </p>
+<h2 id="discussions-and-proposals">Discussions and Proposals<a class="headerlink" href="#discussions-and-proposals" title="Permanent link">&para;</a></h2>
+<p>The idea of integrating vulnerabilities into resolution has been floated in packaging forums. A key thread on the Python Packaging Forum<a href="https://discuss.python.org/t/supplying-vulnerability-based-constraints-to-the-resolution-process/23190" target="_blank">[1]</a><a href="https://discuss.python.org/t/supplying-vulnerability-based-constraints-to-the-resolution-process/23190" target="_blank">[3]</a> discussed a prototype “non-vulnerable” resolver: the NexB python-inspector tool, which merges functional and vulnerability constraints<a href="https://aboutcode.org/2023/non-vulnerable-dependency-resolution/" target="_blank">[10]</a>. (Slides from NexB note this as “Non Vulnerable Dependency Resolution”<a href="https://www.nexb.com/wp-content/uploads/2023/08/PythonInspector-PyDelhi-2023.pptx.pdf" target="_blank">[22]</a>.) In the forum, Philip Jones (pip maintainer) and Paul Moore expressed caution: pip’s job is to install what’s requested, not police it. Paul Moore argued “if it’s bad enough, remove it from PyPI; but we shouldn’t break pip install for everyday users”<a href="https://discuss.python.org/t/supplying-vulnerability-based-constraints-to-the-resolution-process/23190" target="_blank">[3]</a>. Dustin Ingram (pip author) and others suggested an optional path or warnings. A draft PEP was proposed to add vulnerability data to PyPI’s Simple API<a href="https://discuss.python.org/t/draft-pep-adding-vulnerability-data-to-the-simple-api-for-package-indexes/22372" target="_blank">[30]</a>, enabling tools to fetch CVE info during installation, but consensus was lacking<a href="https://discuss.python.org/t/draft-pep-adding-vulnerability-data-to-the-simple-api-for-package-indexes/22372" target="_blank">[30]</a><a href="https://discuss.python.org/t/draft-pep-adding-vulnerability-data-to-the-simple-api-for-package-indexes/22372" target="_blank">[30]</a>.</p>
+<p>There are also feature requests in related projects. For example, a PDM user asked how to automatically run pip-audit on <code>pdm add</code>; a community member pointed out a new plugin <code>pdm-audit</code> as a solution<a href="https://github.com/pdm-project/pdm/discussions/3265" target="_blank">[34]</a>. But this again is a wrapper, not core behavior. <strong>No official PEP</strong> has been accepted that embeds CVE-checking into Python package resolution; instead, discussions stress that security scanning will remain a separate layer (lockfile auditors, CI checks, container scanners).</p>
+<h2 id="academic-and-industry-research">Academic and Industry Research<a class="headerlink" href="#academic-and-industry-research" title="Permanent link">&para;</a></h2>
+<p>A formal “Defensive Publication” (patent-like disclosure) by Tushar Goel et al. (2022) <strong>Non-Vulnerable Dependency Resolution</strong> describes exactly the merged-constraints approach<a href="https://aboutcode.org/2023/non-vulnerable-dependency-resolution/" target="_blank">[10]</a> (resolving with functional and vulnerability constraints together). An AboutCode blog summarizing it outlines a process: collect direct requirements, get all available versions, fetch vulnerability-affected ranges (and fixes), combine them with the version constraints, and run the resolver once<a href="https://aboutcode.org/2023/non-vulnerable-dependency-resolution/" target="_blank">[10]</a><a href="https://aboutcode.org/2023/non-vulnerable-dependency-resolution/" target="_blank">[10]</a>. This yields a dependency tree that satisfies both functional needs and has no known CVEs in chosen versions. The blog notes the alternate (iterative) approach is “complex, tedious and time-consuming”<a href="https://aboutcode.org/2023/non-vulnerable-dependency-resolution/" target="_blank">[10]</a> because it repeatedly resolves and patches vulnerabilities one at a time. These proposals remain at the prototype/research stage.</p>
+<p>Other work includes the Thoth project, which frames dependency resolution as a (possibly AI-aided) decision process and can incorporate vulnerability and performance “fitness” metrics<a href="https://github.com/thoth-station/solver" target="_blank">[37]</a>. (Thoth primarily targets containerized environments and multi-platform issues, not specifically CVE avoidance.) Academic studies on vulnerable dependencies often focus on analysis (e.g. identifying how many projects depend on CVEs<a href="https://arxiv.org/html/2512.03868v1" target="_blank">[39]</a>) rather than solver design. To date, most academic research treats CVE scanning and dependency resolution separately, reflecting current tool practice.</p>
+<h2 id="technical-feasibility-and-challenges">Technical Feasibility and Challenges<a class="headerlink" href="#technical-feasibility-and-challenges" title="Permanent link">&para;</a></h2>
+<p>Implementing a CVE-aware resolver requires combining two data domains: <strong>dependency graphs</strong> and <strong>vulnerability databases</strong>. </p>
+<ul>
+<li>
+<p><strong>Resolver integration:</strong> Modern pip and other tools use <a href="https://github.com/pypa/resolvelib">resolvelib</a> or custom solvers. Conceptually, one could take each dependency constraint (e.g. <code>foo&gt;=1.0</code>) and <strong>subtract out</strong> any vulnerable version ranges (e.g. “CVE-XYZ affects foo&gt;=1.0,&lt;1.2”). The AboutCode blog suggests forming <em>combined version ranges</em> before resolution<a href="https://aboutcode.org/2023/non-vulnerable-dependency-resolution/" target="_blank">[10]</a><a href="https://aboutcode.org/2023/non-vulnerable-dependency-resolution/" target="_blank">[10]</a>. Each package’s allowable versions become “meet” of functional and vulnerability constraints. The resolver then backtracks as usual.</p>
+</li>
+<li>
+<p><strong>Vulnerability metadata:</strong> Sources include PyPA’s advisory DB (used by pip-audit), GitHub Security Advisories, OSV (Google’s open database), NVD/CVE, etc. These data often list vulnerable versions and fixed versions (e.g. “foo 1.0–1.1 vulnerable, 1.2+ fixed”). Quality varies: many Python CVEs are disclosed as GH security advisories, others via NVD, and some not at all. APIs differ (JSON on PyPI’s legacy API, or GraphQL for GHSA, or OSV’s API). Reliable use requires cross-referencing aliases (GHSA vs CVE) and normalizing version specs. The draft PEP on adding vulnerability data to PyPI’s Simple API<a href="https://discuss.python.org/t/draft-pep-adding-vulnerability-data-to-the-simple-api-for-package-indexes/22372" target="_blank">[30]</a> reflects the need for a standard interface.</p>
+</li>
+<li>
+<p><strong>Algorithmic complexity:</strong> Dependency solving is NP-hard. Adding extra constraints could make conflicts common. For example, two dependencies might each require a package in an overlapping vulnerable range, forcing a choice that may conflict with other constraints. The process may also have to iterate (the resolver might encounter a package whose chosen version is later found vulnerable, triggering a backtrack to exclude it). Performance could degrade for large graphs.</p>
+</li>
+<li>
+<p><strong>Version semantics:</strong> Python packages often violate Semantic Versioning. A CVE might affect a minor version (e.g. 1.2.3) but not one bump later (1.2.4). If a malicious or accidental release does not increment the minor, constraints might miss it. Also, pre-releases/rcs complicate ranges. The resolver must interpret <code>!=</code>, <code>&gt;</code>, <code>&lt;</code> correctly. Merging “fixed-in” ranges (from vuln data) with user constraints (from requirements) can produce complex logic.</p>
+</li>
+<li>
+<p><strong>False positives/negatives:</strong> Not every vulnerability is relevant to all users: some CVEs only affect optional features, or packages only used in certain contexts. A strict resolver might block too much (false positives). Conversely, vulnerability databases are incomplete; some CVEs may go unnoticed (false negatives). Deciding which advisories to enforce is a policy choice (severity filters, "ignore" lists, etc).</p>
+</li>
+<li>
+<p><strong>Policy decisions:</strong> Should the resolver <em>block</em> installation or merely warn? The pip discussion noted that blocking installs might be disruptive<a href="https://discuss.python.org/t/supplying-vulnerability-based-constraints-to-the-resolution-process/23190" target="_blank">[3]</a>. Some propose only warnings, or requiring an explicit flag (e.g. <code>--no-vuln</code> or <code>--forbid-vulnerabilities</code>). Should some vulnerabilities be ignored (e.g. “low severity”, or known false positives)? How to handle unpatched cases (like End-of-Life packages with vulnerabilities but no fix)? These are as much user-policy issues as technical.</p>
+</li>
+<li>
+<p><strong>Performance:</strong> Frequent resolution in CI/CD means scalability matters. A CVE-aware pass could query a remote DB (OSV/PyPI) for each package/version, which may be slow. Caching vulnerability data locally (like safety’s JSON DB) can speed it but requires updates. The resolver might repeatedly fetch data if naive. Incremental approaches (only check new or changed packages) could help.</p>
+</li>
+<li>
+<p><strong>Reproducibility:</strong> Ideally the same requirements produce the same resolution result. If vulnerability data changes (new CVE reported) between runs, results could differ. This could break builds unless locked. Some systems (Dependabot) fix versions when CVEs appear. An integrated resolver would need versioned vulnerability feeds or SBOMs to ensure reproducibility.</p>
+</li>
+<li>
+<p><strong>Licensing/Legal:</strong> Many vulnerability databases have licenses (e.g. Safety’s DB is CC-BY-NC-SA<a href="https://docs.pipenv.org/advanced/" target="_blank">[27]</a>, not ideal for commercial redistribution). GitHub’s database is under Microsoft terms. Using NVD (public domain) vs others may affect which source is allowed. A resolver might need to combine sources to be comprehensive, which raises licensing complexity.</p>
+</li>
+<li>
+<p><strong>Security and Supply Chain:</strong> An integrated resolver could itself be a target (if it trusts vulnerability feeds, an attacker could poison them). Using SBOM standards or authenticated APIs could mitigate that. Also, caution is needed: many “fixes” come only in later versions, which might have new bugs or license issues.</p>
+</li>
+</ul>
+<p>Given these challenges, most communities handle CVEs <em>after</em> solving: by scanning with specialized tools rather than baking it into pip’s core. This avoids slowing pip and respects pip’s scope as a generic installer.</p>
+<h2 id="existing-workarounds-and-architectures">Existing Workarounds and Architectures<a class="headerlink" href="#existing-workarounds-and-architectures" title="Permanent link">&para;</a></h2>
+<p>In practice, teams combine resolution and scanning via pipelines and lockfiles:</p>
+<ol>
+<li>
+<p><strong>Lockfile pinning + Periodic Audit:</strong> Tools like Pipenv, Poetry, pip-tools are used to generate a fully pinned environment (lockfile or requirements.txt). These lockfiles are checked into VCS. In CI/CD, scripts run <code>pip-audit</code>, Safety, or other scanners on the <em>installed</em> environment or lockfile<a href="https://docs.pipenv.org/advanced/" target="_blank">[27]</a><a href="https://pypi.org/project/poetry-audit-plugin/" target="_blank">[25]</a>. If a vulnerability is found, the build fails or an alert is raised. Dependabot or Renovate bots automatically open PRs to bump packages to safe versions.</p>
+</li>
+<li>
+<p><strong>Constraint Files:</strong> The <code>security-constraints</code> project (and similar) generates pip constraint files from vulnerability feeds<a href="https://www.reddit.com/r/Python/comments/146dq8d/i_wrote_a_package_for_creating_pip_constraints/" target="_blank">[12]</a><a href="https://pypi.org/project/security-constraints/" target="_blank">[13]</a>. For example, it might output <code>foobar&gt;=1.2.3  # CVE-1234</code> to require only fixed versions. Developers then run <code>pip install -r requirements.txt -c constraints.txt</code>. This effectively filters out bad versions at install time, though it is external to <code>pip</code> itself. It’s a workaround for pip to honor vulnerabilities as additional requirements.</p>
+</li>
+<li>
+<p><strong>Custom Indices or Mirrors:</strong> Some suggest filtering PyPI indices to exclude vulnerable releases. For example, running a private PyPI mirror that removes affected versions. Then pip resolves normally against that mirror. This is heavy-weight and uncommon, but conceptually could enforce non-vulnerable installs.</p>
+</li>
+<li>
+<p><strong>CI/CD Plugins:</strong> Pipenv’s <code>pipenv check</code>, GitHub Actions like <code>jwplayer/pip-install-action</code> with CVE flags, or simple <code>pip-audit</code> actions. These don’t prevent resolution, but they stop merges if CVEs are present. The idea is “shift left”: catch issues before release.</p>
+</li>
+<li>
+<p><strong>SBOM and Dependency Tracking:</strong> Generating Software Bill-of-Materials (e.g. via pipdeptree or Syft) and feeding into SCA tools is another layer. It doesn’t change resolution, but it provides a record for scanning.</p>
+</li>
+</ol>
+<p>No widely-used tool performs resolution+CVEs <em>in one integrated pass</em>. The NexB python-inspector NVDR branch is a prototype, but it is not packaged for general use. Thus current “integrated” workflows are modular: resolve (lock), then audit.</p>
+<h2 id="demand-and-community-sentiment">Demand and Community Sentiment<a class="headerlink" href="#demand-and-community-sentiment" title="Permanent link">&para;</a></h2>
+<p>There is clear demand for better security in dependency management. Pipenv’s inclusion of Safety and the popularity of pip-audit show that developers expect security checks. The Python Packaging Authority has prioritized improving installer performance and trust, which includes making security data accessible (hence PEP discussions<a href="https://discuss.python.org/t/draft-pep-adding-vulnerability-data-to-the-simple-api-for-package-indexes/22372" target="_blank">[30]</a>). On forums like Reddit and StackOverflow, users frequently ask how to prevent installing vulnerable packages, and tools like <code>security-constraints</code> (generating pip constraints from GHSA) have been created by the community<a href="https://www.reddit.com/r/Python/comments/146dq8d/i_wrote_a_package_for_creating_pip_constraints/" target="_blank">[12]</a>.</p>
+<p>However, many pip maintainers and packaging experts emphasize that pip’s primary role is reliable installation, and heavy security enforcement belongs in other layers (an issue also seen in npm’s infamous “npm audit” approach<a href="https://discuss.python.org/t/supplying-vulnerability-based-constraints-to-the-resolution-process/23190" target="_blank">[3]</a>). There are tens or hundreds of open discussions and issues (e.g. “<a href="https://discuss.python.org/t/supplying-vulnerability-based-constraints-to-the-resolution-process/15585">vulnerability-based constraints to the resolution process</a>”<a href="https://discuss.python.org/t/supplying-vulnerability-based-constraints-to-the-resolution-process/23190" target="_blank">[1]</a>) but no large-scale adoption yet. The quick userland solutions (pipx, pdm-audit, dependency bots) suggest that most organizations handle CVEs through policy/CI rather than a single magical installer command. In summary: community wants it, but also acknowledges the complexity.</p>
+<h2 id="recommendations-design-approaches">Recommendations &amp; Design Approaches<a class="headerlink" href="#recommendations-design-approaches" title="Permanent link">&para;</a></h2>
+<p>A practical CVE-aware resolver could be architected as follows:</p>
+<ul>
+<li>
+<p><strong>Data Source Integration:</strong> Leverage the PyPA Advisory DB (via pip-audit), OSV (Google’s database), and/or GitHub’s API. The resolver would periodically fetch or cache vulnerability lists. Ideally, future work on PEPs will make PyPI serve this data in its Simple API<a href="https://discuss.python.org/t/draft-pep-adding-vulnerability-data-to-the-simple-api-for-package-indexes/22372" target="_blank">[30]</a>, simplifying queries.</p>
+</li>
+<li>
+<p><strong>Constraint Injection:</strong> At install-time (e.g. <code>pip install</code> or <code>pip-compile</code>), for each dependency, fetch any “affected version ranges” and “fixed-in” info. Convert these to pip version specifiers (e.g. <code>!=1.2.0</code> if 1.2.0 is bad, or <code>&gt;=1.2.1</code> if that’s the fix). Combine these with user requirements. Many resolvers can take “extra constraints” input.</p>
+</li>
+<li>
+<p><strong>Resolver Hooks:</strong> Modify or wrap the existing resolver to accept a flag (<code>--forbid-vuln</code> or similar). When this is on, it uses the combined constraints. In case of conflict (no solution), show an error explaining which CVE caused it (like pipenv does). If conflicts, tools could suggest the nearest safe versions or require user override.</p>
+</li>
+<li>
+<p><strong>CLI/UX:</strong> Possibly a new pip subcommand (<code>pip install --no-vuln</code>), or an option to pip-compile/pipenv/poetry. The command should allow ignoring specific CVEs or lowering severity thresholds. Feedback should cite the CVE IDs (as pipenv does in <code>pipenv check</code>). Logging policy decisions in a lockfile or similar metadata could aid reproducibility.</p>
+</li>
+<li>
+<p><strong>CI Integration:</strong> Because resolution can be slow, adding flags to CI (e.g. <code>pip-compile --no-vuln</code>) would ensure PRs only lock safe versions. Alternatively, a pipeline step can auto-run pip-audit and only merge if no high-severity CVEs.</p>
+</li>
+<li>
+<p><strong>Caching and SBOMs:</strong> For speed, store vulnerability metadata locally (like Safety’s cache). Optionally, generate an SBOM (CycloneDX/SPDX) of the resolved tree so auditing tools can work off-line. SBOM metadata could include hash of vulnerability DB version used for auditing.</p>
+</li>
+<li>
+<p><strong>Incremental Updates:</strong> To avoid full re-resolution each time, tools could record which packages were checked and only re-query CVE DB when package versions change. Some advisory data are static (CVEs fixed at a point), so incremental is feasible.</p>
+</li>
+<li>
+<p><strong>Open Source Libraries:</strong> There is an opportunity for a shared library that wraps resolvers with CVE-checking. A concept like <code>resolvelib</code> extension or a PyPA library that takes requirements and returns (safe) resolution. This could serve pip, Poetry, etc., uniformly. It could be community-maintained (GitHub) and pulled into multiple frontends.</p>
+</li>
+<li>
+<p><strong>Fallback Mode:</strong> Given some reluctance to fully block, the default might be “warn” (with a summary of CVEs and vulnerable packages). An optional “strict” mode could block. This mirrors npm’s model (which by default warns, with <code>npm audit fix</code> to apply patches).</p>
+</li>
+</ul>
+<p>In implementing any solution, transparency and configurability are key. Users should clearly see which CVEs affect which packages. The resolver should not over-restrict (so allow user overrides), but should make it easy to avoid known bad versions. Leveraging existing workflows (lockfiles + bots) while adding a “secure resolve” command would likely see better adoption than trying to overhaul pip itself.</p>
+<h2 id="diagram-integrated-resolver-flowchart">Diagram: Integrated Resolver Flowchart<a class="headerlink" href="#diagram-integrated-resolver-flowchart" title="Permanent link">&para;</a></h2>
+<div class="codehilite"><pre><span></span><code>flowchart TB
+  subgraph Input
+    A[&quot;Application Requirements&lt;br/&gt;(pyproject/requirements.txt)&quot;]
+  end
+  subgraph VersionLookup
+    B[&quot;Fetch Available Versions&lt;br/&gt;from PyPI/Index&quot;]
+  end
+  subgraph VulnerabilityData
+    C[&quot;Query Vulnerability DB&lt;br/&gt;(OSV, PyPI Advisory)&quot;]
+    D[&quot;Identify Vulnerable&lt;br/&gt;&amp; Fixed Version Ranges&quot;]
+  end
+  subgraph ConstraintCombiner
+    E[&quot;Intersect Version Specs&lt;br/&gt;(functional ∧ security)&quot;]
+  end
+  subgraph Resolver
+    F[&quot;Run Dependency Resolver&lt;br/&gt;on Combined Constraints&quot;]
+  end
+  subgraph Output
+    G[&quot;Resolved Safe Versions&lt;br/&gt;(or Conflicts Report)&quot;]
+  end
+
+  A --&gt; B --&gt; C --&gt; D --&gt; E --&gt; F --&gt; G
+  F --&gt;|Conflict| G
+</code></pre></div>
+
+<p>This flowchart shows an <em>integrated</em> process: the resolver takes both the usual dependency constraints and the additional “avoid these versions” constraints derived from vulnerability data, yielding a dependency tree guaranteed (as far as data allows) to have no known CVEs. If no solution exists, it reports the conflict and implicated CVEs for manual resolution.</p>
+<p><strong>Sources:</strong> The above analysis is based on official documentation and community discussions: pip and Pipenv docs<a href="https://docs.pipenv.org/advanced/" target="_blank">[27]</a>, GitHub repos (Poetry<a href="https://github.com/python-poetry/poetry" target="_blank">[53]</a>, pip-tools<a href="https://github.com/jazzband/pip-tools" target="_blank">[59]</a>, etc.), Python Packaging Forum threads<a href="https://discuss.python.org/t/supplying-vulnerability-based-constraints-to-the-resolution-process/23190" target="_blank">[1]</a><a href="https://discuss.python.org/t/draft-pep-adding-vulnerability-data-to-the-simple-api-for-package-indexes/22372" target="_blank">[30]</a>, NexB blog<a href="https://aboutcode.org/2023/non-vulnerable-dependency-resolution/" target="_blank">[10]</a>, and various proposals (PEPs and issue threads) on CVE integration. In particular, the <em>AboutCode</em> blog<a href="https://aboutcode.org/2023/non-vulnerable-dependency-resolution/" target="_blank">[10]</a><a href="https://aboutcode.org/2023/non-vulnerable-dependency-resolution/" target="_blank">[10]</a> and pip-discuss posts<a href="https://discuss.python.org/t/supplying-vulnerability-based-constraints-to-the-resolution-process/23190" target="_blank">[1]</a><a href="https://discuss.python.org/t/supplying-vulnerability-based-constraints-to-the-resolution-process/23190" target="_blank">[3]</a> provide insight into the NVDR approach and pip maintainers’ stance. All conclusions above are drawn from these primary sources.</p>
+<h3 id="reference-links">Reference Links<a class="headerlink" href="#reference-links" title="Permanent link">&para;</a></h3>
+<ul>
+<li>[1, 3]: <a href="https://discuss.python.org/t/supplying-vulnerability-based-constraints-to-the-resolution-process/23190" target="_blank">Supplying vulnerability-based constraints to the resolution process</a></li>
+<li>[10]: <a href="https://aboutcode.org/2023/non-vulnerable-dependency-resolution/" target="_blank">AboutCode: Non-Vulnerable Dependency Resolution</a></li>
+<li>[12]: <a href="https://www.reddit.com/r/Python/comments/146dq8d/i_wrote_a_package_for_creating_pip_constraints/" target="_blank">Reddit: Package for creating pip constraints based on known vulnerabilities</a></li>
+<li>[13]: <a href="https://pypi.org/project/security-constraints/" target="_blank">PyPI: security-constraints</a></li>
+<li>[22]: <a href="https://www.nexb.com/wp-content/uploads/2023/08/PythonInspector-PyDelhi-2023.pptx.pdf" target="_blank">PythonInspector-PyDelhi-2023.pptx</a></li>
+<li>[25]: <a href="https://pypi.org/project/poetry-audit-plugin/" target="_blank">PyPI: poetry-audit-plugin</a></li>
+<li>[27]: <a href="https://docs.pipenv.org/advanced/" target="_blank">Advanced Usage of Pipenv</a></li>
+<li>[30]: <a href="https://discuss.python.org/t/draft-pep-adding-vulnerability-data-to-the-simple-api-for-package-indexes/22372" target="_blank">Draft PEP: Adding Vulnerability Data to the Simple API for Package Indexes</a></li>
+<li>[33]: <a href="https://discuss.python.org/t/towards-a-pip-audit-subcommand-for-vulnerability-analysis-management/17681" target="_blank">Towards a <code>pip audit</code> subcommand for vulnerability analysis</a></li>
+<li>[34]: <a href="https://github.com/pdm-project/pdm/discussions/3265" target="_blank">Integration of PDM with PIP-Audit for enhanced default project security</a></li>
+<li>[36]: <a href="https://developers.redhat.com/articles/2022/03/07/manage-python-security-thoths-cloud-based-dependency-resolver" target="_blank">Manage Python security with Thoth's cloud-based dependency resolver</a></li>
+<li>[37]: <a href="https://github.com/thoth-station/solver" target="_blank">GitHub: thoth-station/solver</a></li>
+<li>[39]: <a href="https://arxiv.org/html/2512.03868v1" target="_blank">A Comprehensive Study on the Impact of Vulnerable Dependencies</a></li>
+<li>[53]: <a href="https://github.com/python-poetry/poetry" target="_blank">GitHub: python-poetry/poetry</a></li>
+<li>[59]: <a href="https://github.com/jazzband/pip-tools" target="_blank">GitHub: jazzband/pip-tools</a></li>
+<li>[61]: <a href="https://github.com/tox-dev/pipdeptree" target="_blank">GitHub: tox-dev/pipdeptree</a></li>
+<li>[63]: <a href="https://github.com/pypa/pipenv" target="_blank">GitHub: pypa/pipenv</a></li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright &copy; 2026 N Venkata Sai Teja — MIT License
+    </div>
+  
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/sai1027/safe-pip-compile" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://pypi.org/project/safe-pip-compile/" target="_blank" rel="noopener" title="pypi.org" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.8 200.5c-7.7-30.9-22.3-54.2-53.4-54.2h-40.1v47.4c0 36.8-31.2 67.8-66.8 67.8H172.7c-29.2 0-53.4 25-53.4 54.3v101.8c0 29 25.2 46 53.4 54.3 33.8 9.9 66.3 11.7 106.8 0 26.9-7.8 53.4-23.5 53.4-54.3v-40.7H226.2v-13.6h160.2c31.1 0 42.6-21.7 53.4-54.2 11.2-33.5 10.7-65.7 0-108.6M286.2 444.7a20.4 20.4 0 1 1 0-40.7 20.4 20.4 0 1 1 0 40.7M167.8 248.1h106.8c29.7 0 53.4-24.5 53.4-54.3V91.9c0-29-24.4-50.7-53.4-55.6-35.8-5.9-74.7-5.6-106.8.1-45.2 8-53.4 24.7-53.4 55.6v40.7h106.9v13.6h-147c-31.1 0-58.3 18.7-66.8 54.2-9.8 40.7-10.2 66.1 0 108.6 7.6 31.6 25.7 54.2 56.8 54.2H101v-48.8c0-35.3 30.5-66.4 66.8-66.4m-6.6-183.4a20.4 20.4 0 1 1 0 40.8 20.4 20.4 0 1 1 0-40.8"/></svg>
+    </a>
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://www.linkedin.com/in/venkatasaiteja/" target="_blank" rel="noopener" title="www.linkedin.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M416 32H31.9C14.3 32 0 46.5 0 64.3v383.4C0 465.5 14.3 480 31.9 480H416c17.6 0 32-14.5 32-32.3V64.3c0-17.8-14.4-32.3-32-32.3M135.4 416H69V202.2h66.5V416zM102.2 96a38.5 38.5 0 1 1 0 77 38.5 38.5 0 1 1 0-77m282.1 320h-66.4V312c0-24.8-.5-56.7-34.5-56.7-34.6 0-39.9 27-39.9 54.9V416h-66.4V202.2h63.7v29.2h.9c8.9-16.8 30.6-34.5 62.9-34.5 67.2 0 79.7 44.3 79.7 101.9z"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.tabs.sticky", "navigation.sections", "navigation.expand", "navigation.top", "search.highlight", "search.suggest", "content.code.copy", "content.code.annotate", "content.action.edit"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

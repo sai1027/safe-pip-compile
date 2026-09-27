@@ -14,6 +14,10 @@ adds that missing safety loop: compile, audit against [OSV.dev](https://osv.dev)
 constrain vulnerable versions out of the result, and retry until the lock file is
 clean or the configured limit is reached.
 
+[Project page](https://pypi.org/project/safe-pip-compile/)
+
+[Documentation](https://sai1027.github.io/safe-pip-compile/)
+
 ## Why use it?
 
 - Keep the familiar `pip-compile` workflow.
@@ -27,10 +31,6 @@ clean or the configured limit is reached.
 ```bash
 pip install safe-pip-compile
 ```
-
-[Project page](https://pypi.org/project/safe-pip-compile/)
-
-[Documentation](https://sai1027.github.io/safe-pip-compile/)
 
 ## Quick start
 

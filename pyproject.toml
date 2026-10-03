@@ -29,6 +29,7 @@ authors = [
 dependencies = [
     "click>=8.0",
     "httpx>=0.24",
+    "certifi",
     "pyyaml>=6.0",
     "packaging>=23.0",
     "platformdirs>=3.0",
@@ -43,7 +44,7 @@ dev = [
     "respx>=0.20",
     "coverage[toml]",
     "mypy",
-    "ruff",
+    "ruff==0.16.10",
 ]
 
 [project.scripts]
@@ -69,6 +70,7 @@ target-version = "py39"
 line-length = 100
 
 [tool.ruff.lint]
+select = ["E4", "E7", "E9", "F"]
 ignore = []
 
 [tool.ruff.lint.per-file-ignores]

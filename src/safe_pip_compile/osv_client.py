@@ -64,8 +64,19 @@ class OSVClient:
         else:
             self._client = httpx.Client(
                 timeout=30.0,
-                verify=_build_ssl_verify(cert_path),
-                transport=httpx.HTTPTransport(retries=3),
+                verify=_build_ssl_verify(cert_path),    # our cert resolver, single source of truth
+                # trust_env=False on both Client and HTTPTransport:
+                #   - Client level: suppresses proxy env-var reading (HTTP_PROXY etc.)
+                #   - Transport level: prevents the SSL context from reading SSL_CERT_FILE
+                #     during HTTPTransport.__init__ — the actual crash site when a conda
+                #     env sets SSL_CERT_FILE to a path that doesn't exist on this machine.
+                # _build_ssl_verify() is the single source of truth for cert resolution,
+                # so httpx's own env-var handling is redundant and unsafe here.
+                trust_env=False,        # layer 1: no proxy env-vars at client level
+                transport=httpx.HTTPTransport(
+                    retries=3,
+                    trust_env=False,   # layer 2: no SSL_CERT_FILE at crash site
+                ),
             )
 
     def close(self):

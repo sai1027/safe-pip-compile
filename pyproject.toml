@@ -29,6 +29,7 @@ authors = [
 dependencies = [
     "click>=8.0",
     "httpx>=0.24",
+    "certifi",
     "pyyaml>=6.0",
     "packaging>=23.0",
     "platformdirs>=3.0",
